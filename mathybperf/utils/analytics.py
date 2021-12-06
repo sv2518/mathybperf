@@ -12,11 +12,11 @@ class Analytics(object):
 
     def singular(self):
         # test if diagonal contain zeros
-        assert not abs(np.diag(self.A_np)).min() == 0, "Diagonal contains zeros."
+        return abs(np.diag(self.A_np)).min() == 0
 
     def spd(self):
-        assert np.allclose(self.A_np, self.A_np.T), "Matrix is not symmetric."
-        assert np.all(np.linalg.eigvals(self.A_np) > 0), "Matrix is not positive definite."
+        return (np.allclose(self.A_np, self.A_np.T)
+                and np.all(np.linalg.eigvals(self.A_np) > 0))
 
     def condition_number(self):
         return np.linalg.cond(self.A_np)
