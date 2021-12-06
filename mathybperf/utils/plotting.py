@@ -81,7 +81,7 @@ class ResultPlotter(object):
         plt.subplots_adjust(hspace=0.5)
         plt.subplots_adjust(wspace=1.5)
 
-        self.save_plot(name)
+        self.save_plot(name + ".png")
 
     def set_ax_ylabel(self, ax, its_type):
         if its_type == "total":
@@ -93,6 +93,4 @@ class ResultPlotter(object):
 
 
     def save_plot(self, name):
-        # Figures out the absolute path for you in case your working directory moves around.
-        path = os.path.dirname(__file__)
-        plt.savefig(path+name)
+        plt.savefig(name)
