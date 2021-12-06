@@ -1,7 +1,7 @@
 from firedrake import *
-from firedrake.slate.static_condensation import hybridization
 import numpy as np
 from mathybperf import *
+
 
 def run_test(deformations, orders, scalings, itmaxs, penalty, affine_trafo, add_to_quad_degree, params, name):
     dofs = np.zeros(len(orders))
@@ -23,41 +23,33 @@ def run_test(deformations, orders, scalings, itmaxs, penalty, affine_trafo, add_
             for j, s in enumerate(scalings):
                 for k, itmax in enumerate(itmaxs):
 
-                    # preconditioner penalty
-                    penalty_value = penalty(p, deform)
-
-                    # problem setup
-                    mesh = mesh_3D(s, deform, affine_trafo, True)
-                    W, U, V = RT_DQ_3D(p, mesh)
-                    a, L, quadrature_degree = mixed_poisson(W, mesh, add_to_quad_degree)
-
-                    # just some checks
-                    if all(deformations) == 0:
-                        check_facetarea_and_cellvolume(U)
-
-                    # some analytics
-                    analytics_mixed = Analytics(a)
-                    _, wmin, wmax = analytics_mixed.eigenvalues()
-                    eigenvals.append((wmin, wmax))
-                    konditionnumbers.append(analytics_mixed.condition_number())
-                    # print("Mixed poisson spd?", analytics_mixed.spd())
-                    # print("Mixed poisson singular?", analytics_mixed.singular())
-                    print("Mixed poisson condition number", analytics_mixed.condition_number())
-
-                    # AB = Tensor(a).blocks
-                    # S = AB[1, 1] - AB[1, 0] * AB[0, 0].inv * AB[0, 1]
-                    # analytics_schur = Analytics(S)
-                    # print("Schur spd?", analytics_schur.spd())
-                    # print("Schur singular?", analytics_schur.singular())
-                    # print("Schur condition number", analytics_schur.condition_number())
-
-                    # analytics_vmass = Analytics(AB[0, 0])
-                    # print("Velocity mass spd?", analytics_vmass.spd())
-                    # print("Velocity mass singular?", analytics_vmass.singular())
-                    # print("Velocity mass condition number", analytics_vmass.condition_number())
-
                     try:
-                        w, solver = solve_with_params(a, L, W, params, deform, penalty_value, quadrature_degree)
+                        # problem setup and solve
+                        problem_bag = ProblemBag(deform, s, affine_trafo, quadrilateral,
+                                                 p, add_to_quad_degree, penalty, params, 1)
+                        a, solver, quadrature_degree, _, _ = problem(problem_bag, verification=True)
+
+                        # some analytics
+                        analytics_mixed = Analytics(a)
+                        _, wmin, wmax = analytics_mixed.eigenvalues()
+                        eigenvals.append((wmin, wmax))
+                        konditionnumbers.append(analytics_mixed.condition_number())
+                        # print("Mixed poisson spd?", analytics_mixed.spd())
+                        # print("Mixed poisson singular?", analytics_mixed.singular())
+                        print("Mixed poisson condition number", analytics_mixed.condition_number())
+
+                        # AB = Tensor(a).blocks
+                        # S = AB[1, 1] - AB[1, 0] * AB[0, 0].inv * AB[0, 1]
+                        # analytics_schur = Analytics(S)
+                        # print("Schur spd?", analytics_schur.spd())
+                        # print("Schur singular?", analytics_schur.singular())
+                        # print("Schur condition number", analytics_schur.condition_number())
+
+                        # analytics_vmass = Analytics(AB[0, 0])
+                        # print("Velocity mass spd?", analytics_vmass.spd())
+                        # print("Velocity mass singular?", analytics_vmass.singular())
+                        # print("Velocity mass condition number", analytics_vmass.condition_number())
+
                         outer_its = solver.snes.ksp.its
                         pcs = solver.snes.ksp.pc.getFieldSplitSubKSP()
                         fsp0_its =  pcs[0].its
@@ -92,10 +84,6 @@ def run_test(deformations, orders, scalings, itmaxs, penalty, affine_trafo, add_
                         fsp1_its *= fsp1_cheby_its
                     except:
                         pass
-
-                    # verification of error
-                    w2 = naive_solver(a, L, W)
-                    check_error(w, w2)
 
             outerits.append(results_outer_its[0][i][0])
             totalits.append(results_total_its[0][i][0])
