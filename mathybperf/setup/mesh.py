@@ -1,9 +1,10 @@
 from firedrake import *
 
 
-def mesh_3D(s, deform, affine, quadrilateral):
-    mesh = SquareMesh(1, 1, s, quadrilateral=quadrilateral)
-    mesh = ExtrudedMesh(mesh, 1)
+def mesh_3D(cells_per_dim, s, deform, affine, quadrilateral):
+    n = cells_per_dim
+    mesh = SquareMesh(n, n, s, quadrilateral=quadrilateral)
+    mesh = ExtrudedMesh(mesh, n)
     coords = mesh.coordinates.dat.data
 
     if not affine:

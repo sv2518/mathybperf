@@ -1,29 +1,34 @@
 from firedrake import *
+from firedrake.petsc import PETSc
 
-
-def solve_with_params(a, L, W, parameters, deform, penalty_value, quadrature_degree):
+def solve_with_params(a, L, W, solver_bag, deform, penalty_value, quadrature_degree):
     w = Function(W)
     vpb = LinearVariationalProblem(a, L, w)
+    appctx={"deform": deform,
+            "value": penalty_value,
+            "quadrature_degree": quadrature_degree}
+    appctx.update({"get_coarse_operator": solver_bag.p1_callback,
+                   "get_coarse_space": solver_bag.get_p1_space,
+                   "coarse_space_bcs": solver_bag.get_p1_prb_bcs()})
     solver = LinearVariationalSolver(vpb,
-                                     solver_parameters=parameters,
-                                     appctx={"deform": deform,
-                                             "value": penalty_value,
-                                             "quadrature_degree": quadrature_degree})
-    solver.solve()
+                                     solver_parameters=solver_bag.perform_params,
+                                     appctx=appctx)
+    with PETSc.Log.Event("perfsolve"):
+        solver.solve()
     return w, solver
 
 
-def naive_solver(a, L, W):
-    parameters = {"ksp_type": "gmres",
-                  "ksp_gmres_restart": 100,
-                  "ksp_rtol": 1e-8,
-                  "pc_type": "ilu"}
-
-    A = assemble(a)
-    solver = LinearSolver(A, solver_parameters=parameters)
+def naive_solver(a, L, W, solver_bag):
+    appctx = {"get_coarse_operator": solver_bag.p1_callback,
+              "get_coarse_space": solver_bag.get_p1_space,
+              "coarse_space_bcs": solver_bag.get_p1_prb_bcs()}
 
     w = Function(W)
-    b = assemble(L)
-    solver.solve(w, b)
+    vpb = LinearVariationalProblem(a, L, w)
+    solver = LinearVariationalSolver(vpb,
+                                     solver_parameters=solver_bag.baseline_params,
+                                     appctx=appctx)
+    with PETSc.Log.Event("naivesolve"):
+        solver.solve()
 
     return w
