@@ -13,3 +13,20 @@ def est_degree_calculation(form):
 
     # then estimate degree for the preprocessed form
     return estimate_total_polynomial_degree(integrand)
+
+
+class ProblemBag(object):
+    
+    def __init__(self, deformation, scaling, affine_trafo, quadrilateral,
+                 order, add_to_quad_degree, penalty, cells_per_dim):
+        self.deformation = deformation
+        self.scaling = scaling
+        self.affine_trafo = affine_trafo
+        self.quadrilateral = quadrilateral
+        self.order = order
+        self.add_to_quad_degree = add_to_quad_degree
+        self.penalty = penalty
+        self.cells_per_dim = cells_per_dim
+        self.mesh = None
+        self.space = None
+        self.var_problem = None
