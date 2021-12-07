@@ -1,10 +1,13 @@
 
 
+from operator import index
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import os
 import seaborn as sns
+
+from mathybperf.setup.setup_problem import problem
 sns.set_palette("deep")
 current_palette = sns.color_palette()
 tips =['o','v','s','P','*',"D","X",2]
@@ -103,7 +106,7 @@ def solveassembly_internal(columns,axis10,axis11,jp1,dof,order,case):
 
     return a18,a19,a20,a21,time
 
-def tas_spectrum(error_list,dof_group_list,timeoverall_list,case,sol):
+def tas_spectrum(plot_dir, orders, error_list, dof_group_list,timeoverall_list,sol):
 
     plt.close(4)
     plt.close(5)
@@ -113,6 +116,7 @@ def tas_spectrum(error_list,dof_group_list,timeoverall_list,case,sol):
     ############# MESH CONVERGENCE #####################################
     ####################################################################
 
+    print(error_list)
     doa=[-np.log10(error) for error in error_list]#digits of accuracy
     dos=[np.log10(np.sqrt(dof)) for dof in dof_group_list]#digits of size
 
@@ -121,11 +125,11 @@ def tas_spectrum(error_list,dof_group_list,timeoverall_list,case,sol):
     axis4.set_ylabel('DoA')
     axis4.set_xlabel('DoS')
 
-    for i,order in enumerate(order_list):
+    for i,order in enumerate(orders):
         axis4.plot(dos[i],doa[i],"x-",label="DG%d"%order, marker=tips[i])
 
     axis4.grid()
-    fig4.savefig('tas/'+case+'/tasMesh_'+sol+'.pdf', dpi=150)
+    fig4.savefig(plot_dir+'tasMesh_'+sol+'.pdf', dpi=150)
     ####################################################################
     #############    STATIC SCALING  ###################################
     ####################################################################
@@ -136,16 +140,16 @@ def tas_spectrum(error_list,dof_group_list,timeoverall_list,case,sol):
     axis5.set_ylabel('DoF/s')
     axis5.set_xlabel('Time [s]')
 
-    #ggather static scaling information
-    #unknowns per second
+    # gather static scaling information
+    # unknowns per second
     dofpersecond=[]
-    for i,order in enumerate(order_list):
-        dofpersecond.append([x*TMAX/z/y for x, y,z in zip(dof_group_list[i],timeoverall_list[i],dt_list[i])])
+    for i,order in enumerate(orders):
+        dofpersecond.append([x*y for x, y in zip(dof_group_list[i],timeoverall_list[i])])  # needs to be adapted if we wrap a time stepper around
         axis5.loglog(timeoverall_list[i],dofpersecond[i],"x-",label="DG%d"%order, marker=tips[i])
 
     axis5.grid()
     axis5.legend()
-    fig5.savefig('tas/'+case+'/tasStatic_'+sol+'.pdf', dpi=150)
+    fig5.savefig(plot_dir+'tasStatic_'+sol+'.pdf', dpi=150)
 
     ####################################################################
     ############# ACCURACY #############################################
@@ -157,14 +161,14 @@ def tas_spectrum(error_list,dof_group_list,timeoverall_list,case,sol):
     axis6.set_xlabel('Time [s]')
 
 
-    for i,order in enumerate(order_list):
+    for i,order in enumerate(orders):
         efficacy=[x*y for x, y in zip(error_list[i],timeoverall_list[i])]
         doe=-np.log10(efficacy)#digits of efficacy
         axis6.semilogx((timeoverall_list[i]),doe,"x-",label="DG%d"%order, marker=tips[i])
 
     axis6.grid()
     axis6.legend()
-    fig6.savefig('tas/'+case+'/tasEfficacy_'+sol+'.pdf', dpi=150)
+    fig6.savefig(plot_dir+'tasEfficacy_'+sol+'.pdf', dpi=150)
 
     ####################################################################
     ############# TRUE STATIC SCALING ##################################
@@ -175,17 +179,17 @@ def tas_spectrum(error_list,dof_group_list,timeoverall_list,case,sol):
     axis8.set_ylabel('True DoF/s')
     axis8.set_xlabel('Time [s]')
 
-    for i,order in enumerate(order_list):
+    for i,order in enumerate(orders):
         scaling=[x/y for x, y in zip(doa[i],dos[i])]
         truedofpersecond=[x*y for x, y in zip(scaling,dofpersecond[i])]
         axis8.loglog(timeoverall_list[i],truedofpersecond,"x-",label="DG", marker=tips[i])
 
     axis8.grid()
-    fig8.savefig('tas/'+case+'/tasTrueStatic_'+sol+'.pdf', dpi=150)
+    fig8.savefig(plot_dir+'tasTrueStatic_'+sol+'.pdf', dpi=150)
 
-def convergence_rates(error_list,dof_list,order_list,type):
+def convergence_rates(error_list,dof_list,orders,type):
     rows_conv_rate=[]
-    for i,order in enumerate(order_list):
+    for i,order in enumerate(orders):
         one_error_list=error_list[i]
         one_dof_list=dof_group_list[i]
         conv_rate=[]
@@ -293,41 +297,48 @@ def convergence_rates_tolatex(velo_rows_conv_rate,pres_rows_conv_rate,veloerror_
 #############GENERAL PERFORMANCE DISTRIBUTION PLOTS################
 ####################################################################
 penalty = lambda p, d: (p+1)**3
-orders = range(5)
+orders = range(6)
 scalings = [1.0]
 itmaxs = [4]  # script is not working for varyin itmaxs rn
 deformations = [0] # 0.5*d for d in range(0,21)
 affine_trafo = False
 add_to_quad_degree = (0,0)
-cells_per_dim = [1] #range(1, 4)
+cells_per_dim = [range(1, 8)]
 
 folder = "mathybperf/performance/results/mixed_poisson/"
 type = "affine/" if deformations and affine_trafo else "nonaffine/" if deformations else "nodeform/"
 case = "(p+1)**3/"
 test = "cgjacobi"
-name=folder+type+case+test+".csv"
+name=folder+type+case+test
 
 #readin all data
-order_group_data=[]
-dof_group_list=[]
+dof_data=[]
+dof_group_list=[] # per order per cell per dim dofs
 timeoverall_list=[]
 veloerror_list=[]
 preserror_list=[]
 p_list=[]
+
+# gather data from all files
+#gather all filenames
+files = [[name + f"_order{o}_cells{c}.csv" for c in cells_per_dim] for o in orders]
+
 for i,order in enumerate(orders):
-    order_data = pd.read_csv(name) 
+    cell_data = pd.concat(pd.read_csv(cell_files,nrows=1) for cell_files in files[i])
+    
+    #order data by dof number and append to group by order list
+    dof_data.append(cell_data.groupby(["sum dofs"], as_index=False))
 
     #gather all dofs
-    dof_group_list.append([e[1] for e in order_group_data.items()])#use sum dofs instead
+    dof_group_list.append([d[1] for d in cell_data["sum dofs"].items()])#use sum dofs instead
+
 
     #gather all times, decide here which times to use!
-    timeoverall_list.append([e[1] for e in dof_group_data["taylorgreen"].items()])
-    #timeoverall_list=TIME_LIST
+    timeoverall_list.append([e[1] for e in cell_data["overallwarm"].items()])
 
     #gather all errors
-    veloerror_list.append([e[1] for e in dof_group_data["L2Velo"].items()])
-    preserror_list.append([e[1] for e in dof_group_data["L2Pres"].items()])
-    # p_list.append([e[1] for e in dof_group_data[""].items()])
+    veloerror_list.append([e[1] for e in cell_data["L2Velo"].items()])
+    preserror_list.append([e[1] for e in cell_data["L2Pres"].items()])
 
 ########## CONVGERNECE PLOTS#######
 # velo_conv=convergence_rates(veloerror_list,dof_group_list,order_list,"velo")
@@ -446,14 +457,14 @@ for i,order in enumerate(orders):
 ################ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ####################
 ################ here actually TAS stuff starts ####################
 ################ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ####################
-
-if not os.path.exists(os.path.dirname('mathybperf/pefromance/plots/tas/'+case+'/')):
-    os.makedirs(os.path.dirname('mathybperf/pefromance/plots/tas/'+case+'/'))
+plot_dir = 'mathybperf/performance/plots/tas/'+case+'/'
+if not os.path.exists(os.path.dirname(plot_dir)):
+    os.makedirs(os.path.dirname(plot_dir))
 
 #plot tas spectrum for velocity
-tas_spectrum(veloerror_list,dof_group_list,timeoverall_list,case,"velo")
+tas_spectrum(plot_dir, orders, veloerror_list,dof_group_list,timeoverall_list,"velo")
 
 #plot tas spectrum for pressure
-tas_spectrum(preserror_list,dof_group_list,timeoverall_list,case,"pres")
+tas_spectrum(plot_dir, orders, preserror_list,dof_group_list,timeoverall_list,"pres")
 
 
