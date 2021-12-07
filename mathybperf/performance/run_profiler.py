@@ -70,13 +70,13 @@ baseline_params = {'mat_type': 'matfree',
 solver_bag = SolverBag(perform_params, baseline_params)
 
 penalty = lambda p, d: (p+1)**3
-orders = range(2)
+orders = range(6)
 scalings = [1.0]
 itmaxs = [4]  # script is not working for varyin itmaxs rn
 deformations = [0] # 0.5*d for d in range(0,21)
 affine_trafo = False
 add_to_quad_degree = (0,0)
-cells_per_dim = [1, 2] #range(1, 4)
+cells_per_dim = range(1, 8)
 
 # setup output
 folder = "mathybperf/performance/results/mixed_poisson/"
@@ -158,10 +158,7 @@ for deform in deformations:
                 }
                 tas_data.update(accuracy_data)
 
-                tas_data_cells[c] = tas_data
-            tas_data_orders.append(tas_data_cells)
-
-# write out data to .csv
-datafile = pd.DataFrame(tas_data_orders, index=["order %s"%o for o in orders], columns=["cells per dim %s"%c in cells_per_dim])   
-datafile.to_csv(name+".csv", mode="w")
+                # write out data to .csv
+                datafile = pd.DataFrame(tas_data, index=[0])   
+                datafile.to_csv(name+f"_order{o}_cells{c}.csv",index=False,mode="w",header=True)
 
