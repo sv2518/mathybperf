@@ -116,7 +116,6 @@ def tas_spectrum(plot_dir, orders, error_list, dof_group_list,timeoverall_list,s
     ############# MESH CONVERGENCE #####################################
     ####################################################################
 
-    print(error_list)
     doa=[-np.log10(error) for error in error_list]#digits of accuracy
     dos=[np.log10(np.sqrt(dof)) for dof in dof_group_list]#digits of size
 
