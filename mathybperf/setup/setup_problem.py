@@ -17,13 +17,13 @@ def problem(problem_bag, solver_bag, verification, new=True):
                                if not problem_bag.var_problem or new else problem_bag.var_problem)
     problem_bag.var_problem = a, L, quadrature_degree
 
-    # solve problem
-    solver_bag.mesh = problem_bag.mesh
-    w, solver = solve_with_params(a, L, W, solver_bag, problem_bag.deformation,
-                                  penalty_value, quadrature_degree)
-
     # verification of error
     if verification:
+        # solve problem with another solver for comparison
+        solver_bag.mesh = problem_bag.mesh
+        w, solver = solve_with_params(a, L, W, solver_bag, problem_bag.deformation,
+                                    penalty_value, quadrature_degree)
+
         # if problem_bag.deformation == 0:
         #     check_facetarea_and_cellvolume(U)
         w2 = naive_solver(a, L, W, solver_bag)
