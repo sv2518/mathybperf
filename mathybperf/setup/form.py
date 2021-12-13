@@ -2,7 +2,7 @@ from firedrake import *
 from mathybperf.utils.fem_utils import est_degree_calculation
 
 
-def mixed_poisson(W, mesh, add_to_quad_degree, uexact):
+def mixed_poisson(W, add_to_quad_degree, uexact):
     sigma, u = TrialFunctions(W)
     tau, v = TestFunctions(W)
 
