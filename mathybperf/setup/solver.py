@@ -15,7 +15,6 @@ def solve_with_params(a, L, W, solver_bag, deform, penalty_value, quadrature_deg
                                      appctx=appctx)
     with PETSc.Log.Event("perfsolve"):
         solver.solve()
-    return w, solver
     
     sigma_dc, u_dc = TrialFunctions(W)
     tau_dc, v_dc = TestFunctions(W)
@@ -48,6 +47,7 @@ def solve_with_params(a, L, W, solver_bag, deform, penalty_value, quadrature_deg
     assert np.allclose(w_dc.dat.data[0], w.dat.data[0], rtol=1.e-4)
     assert np.allclose(w_dc.dat.data[1], w.dat.data[1], rtol=1.e-4)
 
+    return w, solver
 
 def naive_solver(a, L, W, solver_bag):
     appctx = {"get_coarse_operator": solver_bag.p1_callback,
