@@ -286,3 +286,124 @@ parameters_preonly_schur_cheby_jacobi_cheby_jacobi = {
     # "pc_fieldsplit_ksp_converged_reason": None,
     # "ksp_view": None
 }
+
+
+
+mg_param_amg = {'ksp_type': 'preonly', 'pc_type': 'gamg',
+            'ksp_rtol': 1E-8,
+            'pc_mg_cycles': 'v',
+            'mg_levels': {'ksp_type': 'chebyshev',
+                            'ksp_max_it': 2, 'pc_type': 'bjacobi', 'sub_pc_type': 'sor'},
+            'mg_coarse': {'ksp_type':'chebyshev', 'ksp_max_it':2,
+                        'pc_type':'sor'}}
+mg_param_gmg = {'ksp_type': 'preonly', 'pc_type': 'mg',
+                'ksp_rtol': 1E-8,
+                'pc_mg_levels':2,
+                'pc_mg_cycles': 'v',
+                'mg_levels': {'ksp_type': 'chebyshev',
+                            'ksp_max_it': 2, 'pc_type': 'bjacobi', 'sub_pc_type': 'sor'},
+                'mg_coarse': {'ksp_type':'chebyshev', 'ksp_max_it':2,
+                                'pc_type':'sor'}}
+                        
+mg_jack = {"ksp_type": "preonly",
+        "pc_type": "mg",
+        "pc_mg_type": "full",
+        "mg_levels_ksp_type": "chebyshev",
+        "mg_levels_ksp_max_it": 3,
+        "mg_levels_pc_type": "jacobi"}
+mgb = {"snes_type": "ksponly",
+            "ksp_type": "preonly",
+            "pc_type": "mg",
+            "pc_mg_type": "full",
+            "mg_levels_ksp_type": "chebyshev",
+            "mg_levels_ksp_max_it": 2,
+            "mg_levels_pc_type": "fieldsplit",
+            "mg_levels_pc_fieldsplit_type": "additive",
+            "mg_levels_fieldsplit_pc_type": "jacobi",
+            "mg_coarse_pc_type": "fieldsplit",
+            "mg_coarse_pc_fieldsplit_type": "additive",
+            "mg_coarse_fieldsplit_pc_type": "redundant",
+            "mg_coarse_fieldsplit_redundant_pc_type": "lu",
+            "mg_coarse_ksp_type": "preonly",
+            "snes_convergence_test": "skip"} # does not work bc additive I think
+mgmatfree = {"snes_type": "ksponly",
+                      "ksp_type": "preonly",
+                      "mat_type": "matfree",
+                      "pc_type": "mg",
+                      "pc_mg_type": "full",
+                      "mg_coarse_ksp_type": "preonly",
+                      "mg_coarse_pc_type": "python",
+                      "mg_coarse_pc_python_type": "firedrake.AssembledPC",
+                      "mg_coarse_assembled_pc_type": "lu",
+                      "mg_levels_ksp_type": "chebyshev",
+                      "mg_levels_ksp_max_it": 3,
+                      "mg_levels_pc_type": "jacobi"}    
+p1pc = {"ksp_type": "cg",
+        "pc_type": "python",
+        "mat_type": "matfree",
+        "pc_python_type": "firedrake.P1PC",
+        "pmg_coarse_degree": 2,
+        "pmg_mg_levels": {
+            "ksp_type": "chebyshev",
+            "ksp_max_it": 2,
+            "pc_type": "jacobi"},
+        "pmg_mg_coarse": {
+            "ksp_type": "preonly",
+            "pc_type": "lu",
+            "pc_factor_mat_solver_type": "mumps"
+        }}
+
+gt_levels_cheby = {"ksp_type": "chebyshev",
+                    "ksp_max_it": 3,
+                    "pc_type": "jacobi"
+                    }
+gt_levels_fancy = {"ksp_type": "richardson",
+                    "ksp_max_it": 1,
+                    "pc_type": "fieldsplit",
+                    "pc_fieldsplit_type": "schur",
+                    "pc_fieldsplit_schur_fact_type": "upper",
+                    "fieldsplit_0_ksp_type": "richardson",
+                    "fieldsplit_0_ksp_convergence_test": "skip",
+                    "fieldsplit_0_ksp_max_it": 2,
+                    "fieldsplit_0_ksp_richardson_self_scale": None,
+                    "fieldsplit_0_pc_type": "bjacobi",
+                    "fieldsplit_0_sub_pc_type": "ilu",
+                    "fieldsplit_1_ksp_type": "richardson",
+                    "fieldsplit_1_ksp_convergence_test": "skip",
+                    "fieldsplit_1_ksp_richardson_self_scale": None,
+                    "fieldsplit_1_ksp_max_it": 3,
+                    "fieldsplit_1_pc_type": "python",
+                    "fieldsplit_1_pc_python_type": "__main__.Mass",
+                    "fieldsplit_1_aux_pc_type": "bjacobi",
+                    "fieldsplit_1_aux_sub_pc_type": "icc"}
+gt_levels_demo =  {'ksp_type': 'richardson',
+                    'ksp_max_it': 2,
+                    'pc_type': 'bjacobi',}
+p1pcpatch = {"ksp_type": "gmres",
+            "ksp_converged_reason": None,
+            "pc_type": "python",
+            "pc_python_type": "firedrake.P1PC",
+            "pmg_mg_levels_ksp_type": "chebyshev",
+            "pmg_mg_levels_ksp_norm_type": "unpreconditioned",
+            "pmg_mg_levels_ksp_monitor_true_residual": None,
+            "pmg_mg_levels_pc_type": "python",
+            "pmg_mg_levels_pc_python_type": "firedrake.PatchPC",
+            "pmg_mg_levels_patch": {
+                "pc_patch_sub_mat_type": "aij",
+                "pc_patch_save_operators": True,
+                "pc_patch_construct_dim": 0,
+                "pc_patch_construct_type": "star",
+                "sub_ksp_type": "preonly",
+                "sub_pc_type": "lu",
+            },
+            "pmg_mg_coarse": {
+                "mat_type": "aij",
+                "ksp_type": "preonly",
+                "pc_type": "python",
+                "pc_python_type": "firedrake.AssembledPC",
+                "assembled_pc_type": "cholesky",
+            }} # not implemented on extruded meshes
+lumatfree = {"ksp_type": "preonly",
+            "pc_type": "python",
+            "pc_python_type": "firedrake.AssembledPC",
+            "assembled_pc_type": "lu"}
