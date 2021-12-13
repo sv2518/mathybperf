@@ -106,15 +106,15 @@ tas_data_orders = []
 assert len(deformations) == 1 or len(scalings) == 1, "Can only loop over either, scalings or deformations"
 for deform in deformations:
     for s in scalings:
-        for o in orders:
+        for p in orders:
             tas_data_cells = {}
             for c in cells_per_dim:
                 tas_data = {}
                 # problem setup
                 problem_bag = ProblemBag(deform, s, affine_trafo, quadrilateral,
-                                         o, add_to_quad_degree, penalty, c)
+                                        p, add_to_quad_degree, penalty, c)
 
-                PETSc.Sys.Print("Approximation order:", o)
+                PETSc.Sys.Print("Approximation order:", p)
                 PETSc.Sys.Print("\nDeformation: ", deform)
                 PETSc.Sys.Print("\nCell scaling: ", s)
 
@@ -128,7 +128,7 @@ for deform in deformations:
 
                 # get timings for solving without assembly
                 with PETSc.Log.Stage("update solve"):
-                    _, _, _, (w, w2), mesh = problem(problem_bag, solver_bag, verification=True, new=False)
+                    _, _, _, (_, _), mesh = problem(problem_bag, solver_bag, verification=True, new=False)
                     temp_internal_timedata_warm = time_data.get_internal_timedata("update solve", "warm", mesh.comm)
                 internal_timedata_warm={key: temp_internal_timedata_warm[key]
                                         for key in temp_internal_timedata_warm.keys()}
@@ -140,13 +140,13 @@ for deform in deformations:
 
                 # add further information
                 # setup information
-                tas_data.update({"order": o,
+                tas_data.update({"order": p,
                                 "deform": deform,
                                 "scalings": s
                 })
 
                 # gather dofs
-                u_w, p_w = myw.split()
+                u_w, p_w = w.split()
                 u_dofs = u_w.dof_dset.layout_vec.getSize() 
                 p_dofs = p_w.dof_dset.layout_vec.getSize()
                 size_data={
@@ -170,5 +170,5 @@ for deform in deformations:
 
                 # write out data to .csv
                 datafile = pd.DataFrame(tas_data, index=[0])   
-                datafile.to_csv(name+f"_order{o}_cells{c}.csv",index=False,mode="w",header=True)
+                datafile.to_csv(name+f"_order{p}_cells{c}.csv",index=False,mode="w",header=True)
 
