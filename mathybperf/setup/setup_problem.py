@@ -3,6 +3,8 @@ from .form import mixed_poisson
 from .space import RT_DQ_3D
 from .solver import solve_with_params, naive_solver
 from mathybperf.verification.error import check_error
+from firedrake import Function
+from ufl import grad
 
 def problem(problem_bag, solver_bag, verification, new=True):
     # setup poblem
@@ -11,9 +13,10 @@ def problem(problem_bag, solver_bag, verification, new=True):
                         problem_bag.deformation, problem_bag.affine_trafo,
                         problem_bag.quadrilateral, solver_bag.levels) if not problem_bag.mesh or new else problem_bag.mesh)
     solver_bag.mesh = problem_bag.mesh
-    W, U, V = RT_DQ_3D(problem_bag.order, solver_bag.exact_solution(problem_bag.scaling)) if not problem_bag.space or new else problem_bag.space
+    W, U, V = RT_DQ_3D(problem_bag.order, solver_bag.mesh) if not problem_bag.space or new else problem_bag.space
     problem_bag.space =  W, U, V 
-    a, L, quadrature_degree = (mixed_poisson(W, problem_bag.mesh, problem_bag.add_to_quad_degree)
+    a, L, quadrature_degree = (mixed_poisson(W, problem_bag.add_to_quad_degree,
+                                             solver_bag.exact_solution(problem_bag.scaling))
                                if not problem_bag.var_problem or new else problem_bag.var_problem)
     problem_bag.var_problem = a, L, quadrature_degree
     w, solver = solve_with_params(a, L, W, solver_bag, problem_bag.deformation,
@@ -23,7 +26,9 @@ def problem(problem_bag, solver_bag, verification, new=True):
     if verification:
         # if problem_bag.deformation == 0:
         #     check_facetarea_and_cellvolume(U)
-        w2 = naive_solver(a, L, W, solver_bag)
+        w2 = Function(W)
+        w2.sub(0).project(grad(solver_bag.exact_solution(problem_bag.scaling)))
+        w2.sub(1).project(solver_bag.exact_solution(problem_bag.scaling))
         check_error(w, w2)
     else: 
         w2 = None
