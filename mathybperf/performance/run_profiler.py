@@ -41,34 +41,20 @@ parameters["pyop2_options"]["lazy_evaluation"] = False
 
 
 #########    GENERAL SETUP   ####
+gt_params_nested = {"mg_coarse": mg_jack,
+                    "mg_levels": gt_levels_cheby}
+
 # setup test
 perform_params = {'mat_type': 'matfree',
-                      'ksp_type': 'preonly',
-                      'pc_type': 'python',
-                      'pc_python_type': 'firedrake.HybridizationPC',
-                      'hybridization': {'ksp_type': 'cg',
-                                        'pc_type': 'python',
-                                        'ksp_rtol': 1e-8,
-                                        'mat_type': 'matfree',
-                                        'localsolve': {'ksp_type': 'preonly',
-                                                       'mat_type': 'matfree',
-                                                       'pc_type': 'fieldsplit',
-                                                       'pc_fieldsplit_type': 'schur'},
-                                        'pc_python_type': 'firedrake.GTMGPC',
-                                        'gt': {'mg_levels': {'ksp_type': 'cg',
-                                                             'pc_type': 'none',
-                                                             'ksp_max_it': 3},
-                                               'mg_coarse': {'ksp_type': 'cg',
-                                                             'pc_type': 'none'},
-                                               'mat_type': 'matfree'}}}
-baseline_params = {'mat_type': 'matfree',
-                    'ksp_type': 'preonly',
-                    'pc_type': 'python',
-                    'pc_python_type': 'firedrake.HybridizationPC',
-                    'hybridization': {'ksp_type': 'cg',
-                                        'pc_type': 'python',
-                                        'pc_python_type': 'firedrake.GTMGPC',
-                                        'gt': gt_params_nested}}
+                  'ksp_type': 'preonly',
+                  'pc_type': 'python',
+                  'pc_python_type': 'firedrake.HybridizationPC',
+                  'hybridization': {'ksp_type': 'cg',
+                                    'pc_type': 'python',
+                                    'ksp_rtol': 1e-8,
+                                    'mat_type': 'matfree',
+                                    'pc_python_type': 'firedrake.GTMGPC',
+                                    'gt': gt_params_nested}}
 baseline_params = {"ksp_type": "gmres",
                     'pc_type': 'ilu',
                     "ksp_gmres_restart": 100,
