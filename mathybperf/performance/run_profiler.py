@@ -26,6 +26,10 @@ class SolverBag(object):
         q = TestFunction(P1)
         return inner(grad(p), grad(q))*dx
 
+    def exact_solution(self, L):
+        x = SpatialCoordinate(self.mesh)
+        return x[0]*(L-x[0])*x[1]*(L-x[1])*x[2]*(L-x[2])
+
 ######################################
 ##############   MAIN   ##############
 ######################################
