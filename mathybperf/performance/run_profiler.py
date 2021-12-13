@@ -83,8 +83,9 @@ scalings = [1.0]
 itmaxs = [4]  # script is not working for varyin itmaxs rn
 deformations = [0] # 0.5*d for d in range(0,21)
 affine_trafo = False
-add_to_quad_degree = (0,0)
-cells_per_dim = range(1, 8)
+add_to_quad_degree = (0, 0)
+cells_per_dim = range(1, 5)
+quadrilateral = True
 
 # setup output
 folder = "mathybperf/performance/results/mixed_poisson/"
@@ -145,9 +146,9 @@ for deform in deformations:
                 })
 
                 # gather dofs
-                u, p = w.split()
-                u_dofs = u.dof_dset.layout_vec.getSize() 
-                p_dofs = p.dof_dset.layout_vec.getSize()
+                u_w, p_w = myw.split()
+                u_dofs = u_w.dof_dset.layout_vec.getSize() 
+                p_dofs = p_w.dof_dset.layout_vec.getSize()
                 size_data={
                     "velo dofs": u_dofs,
                     "pres dofs": p_dofs,
@@ -164,6 +165,7 @@ for deform in deformations:
                             "H1Pres": errors[2][1],
                             "HDivVelo": errors[2][0],  
                 }
+                PETSc.Sys.Print("\n error: ", errors[1][1])
                 tas_data.update(accuracy_data)
 
                 # write out data to .csv
