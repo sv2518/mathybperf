@@ -9,9 +9,10 @@ from firedrake.petsc import PETSc
 
 class SolverBag(object):
 
-    def __init__(self, perform_params, baseline_params):
+    def __init__(self, perform_params, baseline_params, gtmg_levels):
         self.perform_params = perform_params
         self.baseline_params = baseline_params
+        self.levels = gtmg_levels
         self.mesh = None
 
     def get_p1_space(self):
@@ -67,13 +68,14 @@ baseline_params = {'mat_type': 'matfree',
                     'hybridization': {'ksp_type': 'cg',
                                         'pc_type': 'python',
                                         'pc_python_type': 'firedrake.GTMGPC',
-                                        'gt': {'mg_levels': {'ksp_type': 'cg',
-                                                            'pc_type': 'none',
-                                                            'ksp_max_it': 3},
-                                            'mg_coarse': {'ksp_type': 'cg',
-                                                            'pc_type': 'none'},
-                                            'mat_type': 'matfree'}}}
-solver_bag = SolverBag(perform_params, baseline_params)
+                                        'gt': gt_params_nested}}
+baseline_params = {"ksp_type": "gmres",
+                    'pc_type': 'ilu',
+                    "ksp_gmres_restart": 100,
+                    'ksp_rtol': 1.e-12}
+
+gtmg_levels = 2
+solver_bag = SolverBag(perform_params, baseline_params, gtmg_levels)
 
 penalty = lambda p, d: (p+1)**3
 orders = range(6)
