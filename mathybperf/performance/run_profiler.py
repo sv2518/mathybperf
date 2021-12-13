@@ -16,7 +16,7 @@ class SolverBag(object):
         self.mesh = None
 
     def get_p1_space(self):
-            return FunctionSpace(self.mesh, "CG", 1)
+        return FunctionSpace(self.mesh, "CG", 1)
 
     def get_p1_prb_bcs(self):
         return [DirichletBC(self.get_p1_space(), Constant(0.0), "on_boundary"),
