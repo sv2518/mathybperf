@@ -64,3 +64,20 @@ class TimeData(object):
                 # "postprocessing": PETSc.Log.Event("postprocessing").getPerfInfo()["time"],
         }
         return time_data
+
+
+class SizeData(object):
+    def __init__(self, solution):
+        self.solution = solution
+        self.split_solution = solution.split()
+
+    def get_split_data(self):
+        u_dofs, p_dofs = (sol.dof_dset.layout_vec.getSize()
+                          for sol in self.split_solution)
+        return {"velo dofs": u_dofs,
+                "pres dofs": p_dofs,
+                "sum dofs": u_dofs + p_dofs}
+    
+    def get_data(self):
+        dofs = self.solution.dof_dset.layout_vec.getSize()
+        return {"trace dofs": dofs}

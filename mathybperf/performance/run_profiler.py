@@ -141,14 +141,17 @@ for deform in deformations:
                 })
 
                 # gather dofs
-                u_w, p_w = w.split()
-                u_dofs = u_w.dof_dset.layout_vec.getSize() 
-                p_dofs = p_w.dof_dset.layout_vec.getSize()
-                size_data={
-                    "velo dofs": u_dofs,
-                    "pres dofs": p_dofs,
-                    "sum dofs": u_dofs+p_dofs
-                }
+                size_data = SizeData(w).get_split_data()
+                tas_data.update(size_data)
+
+                # gather errors
+                accuracy_data = get_errors(w, w2)
+                PETSc.Sys.Print("\n error u : ", accuracy_data["L2Velo"])
+                PETSc.Sys.Print("\n error p: ", accuracy_data["L2Pres"])
+                tas_data.update(accuracy_data)
+    
+                # gather dofs for trace
+                size_data = SizeData(w_t).get_data()
                 tas_data.update(size_data)
 
                 # gather errrors
