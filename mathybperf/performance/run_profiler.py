@@ -137,8 +137,8 @@ for deform in deformations:
                 # setup information
                 tas_data.update({"order": p,
                                 "deform": deform,
-                                "scalings": s
-                })
+                                 "scalings": s,
+                                 "quadrature_degree": quad_degree[0]})
 
                 # gather dofs
                 size_data = SizeData(w).get_split_data()
