@@ -154,17 +154,9 @@ for deform in deformations:
                 size_data = SizeData(w_t).get_data()
                 tas_data.update(size_data)
 
-                # gather errrors
-                errors = get_errors(w, w2)
-                accuracy_data={"LinfPres": errors[0][1],
-                            "LinfVelo": errors[0][0],
-                            "L2Pres": errors[1][1],
-                            "L2Velo": errors[1][0],
-                            "H1Pres": errors[2][1],
-                            "HDivVelo": errors[2][0],  
-                }
-                PETSc.Sys.Print("\n error u : ", errors[1][0])
-                PETSc.Sys.Print("\n error p: ", errors[1][1])
+                # errors for trace
+                accuracy_data = get_error(w_t, w_t_exact)
+                PETSc.Sys.Print("\n error trace: ", accuracy_data["LinfTrace"])
                 tas_data.update(accuracy_data)
 
                 # write out data to .csv
