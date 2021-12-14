@@ -1,26 +1,31 @@
 from .mesh import mesh_3D
 from .form import mixed_poisson
 from .space import RT_DQ_3D
-from .solver import solve_with_params, naive_solver
-from mathybperf.verification.error import check_error
-from firedrake import Function
-from ufl import grad
+from .solver import solve_with_params
+from mathybperf.verification.error import check_error, check_var_problem, project_trace_solution
+from mathybperf.verification.geometric import check_facetarea_and_cellvolume
+from firedrake import *
+import ufl
 
 def problem(problem_bag, solver_bag, verification, new=True):
-    # setup poblem
-    penalty_value = problem_bag.penalty(problem_bag.order, problem_bag.deformation)
-    problem_bag.mesh = (mesh_3D(problem_bag.cells_per_dim, problem_bag.scaling,
-                        problem_bag.deformation, problem_bag.affine_trafo,
-                        problem_bag.quadrilateral, solver_bag.levels) if not problem_bag.mesh or new else problem_bag.mesh)
-    solver_bag.mesh = problem_bag.mesh
-    W, U, V = RT_DQ_3D(problem_bag.order, solver_bag.mesh) if not problem_bag.space or new else problem_bag.space
-    problem_bag.space =  W, U, V 
-    a, L, quadrature_degree = (mixed_poisson(W, problem_bag.add_to_quad_degree,
-                                             solver_bag.exact_solution(problem_bag.scaling))
-                               if not problem_bag.var_problem or new else problem_bag.var_problem)
-    problem_bag.var_problem = a, L, quadrature_degree
-    w, solver = solve_with_params(a, L, W, solver_bag, problem_bag.deformation,
-                                  penalty_value, quadrature_degree)
+    reset = not problem_bag.mesh or new  # setup new problem
+    if reset:
+        problem_bag.mesh = mesh_3D(problem_bag, solver_bag.levels)
+        solver_bag.mesh = problem_bag.mesh
+
+    # calculate exact solution on the new mesh before we setup the forms because we do MMS
+    exact_sol = solver_bag.exact_solution(problem_bag.scaling)
+
+    if reset:
+        problem_bag.space = RT_DQ_3D(problem_bag.order, problem_bag.mesh)
+        problem_bag.var_problem = mixed_poisson(problem_bag.space[0],
+                                                problem_bag.add_to_quad_degree,
+                                                exact_sol)
+    
+    # solve problem
+    a, L, quadrature_degree = problem_bag.var_problem
+    w, solver = solve_with_params(problem_bag, solver_bag)
+    w2 = None
 
     # verification of error
     if verification:
