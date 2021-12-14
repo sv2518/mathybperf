@@ -33,7 +33,7 @@ class SolverBag(object):
 
     def exact_solution(self, L):
         x = SpatialCoordinate(self.mesh)
-        return x[0]*(L-x[0])*x[1]*(L-x[1])*x[2]*(L-x[2])
+        return x[0]*(L-x[0])*x[1]*(L-x[1])*x[2]*(L-x[2]) * exp(L-x[0]+1)
 
 ######################################
 ##############   MAIN   ##############
