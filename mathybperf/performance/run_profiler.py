@@ -116,14 +116,14 @@ for deform in deformations:
                 # get internal time data of solvers
                 # warm up solver
                 with PETSc.Log.Stage("warmup"):
-                    _, _, _, (w, w2), mesh = problem(problem_bag, solver_bag, verification=True)
+                    quad_degree, (w, w2), (w_t, w_t_exact), mesh = problem(problem_bag, solver_bag, verification=True)
                     internal_timedata_cold = time_data.get_internal_timedata("warmup", "cold", mesh.comm)
                     temp_internal_timedata_cold = time_data.get_internal_timedata("warmup", "warm", mesh.comm)#temp needed for subtraction 
                 tas_data.update(internal_timedata_cold)
 
                 # get timings for solving without assembly
                 with PETSc.Log.Stage("update solve"):
-                    _, _, _, (_, _), mesh = problem(problem_bag, solver_bag, verification=True, new=False)
+                    quad_degree, (_, _), (_, _), mesh = problem(problem_bag, solver_bag, verification=True, new=False)
                     temp_internal_timedata_warm = time_data.get_internal_timedata("update solve", "warm", mesh.comm)
                 internal_timedata_warm={key: temp_internal_timedata_warm[key]
                                         for key in temp_internal_timedata_warm.keys()}
@@ -136,7 +136,7 @@ for deform in deformations:
                 # add further information
                 # setup information
                 tas_data.update({"order": p,
-                                "deform": deform,
+                                 "deform": deform,
                                  "scalings": s,
                                  "quadrature_degree": quad_degree[0]})
 
