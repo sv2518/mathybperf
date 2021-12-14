@@ -36,6 +36,10 @@ def problem(problem_bag, solver_bag, verification, new=True):
         w2.sub(0).project(ufl.grad(exact_sol))
         w2.sub(1).project(exact_sol)
 
+        # get error for trace solution too
+        w_t = solver.snes.ksp.pc.getPythonContext().trace_solution
+        w_t_exact = project_trace_solution(w_t.function_space(), exact_sol)
+
         # double check that the reference solution is solving the variational problem
         check_var_problem(a, L, w2.sub(1))
 

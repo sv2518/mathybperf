@@ -42,3 +42,24 @@ def check_var_problem(a, L, w):
     dat2 = assemble(L).dat.data
     assert np.allclose(dat1[0], dat2[0], rtol=1.e-2), "Velocity in solution does not solve the variational problem."
     assert np.allclose(dat1[1], dat2[1], rtol=1.e-2), "Pressure in solution does not solve the variational problem."
+
+
+def project_trace_solution(T, exact_sol):
+    lmbda_t = TrialFunction(T)
+    gamma_t = TestFunction(T)
+    a_t = (lmbda_t * gamma_t * ufl.ds_t +
+            lmbda_t * gamma_t * ufl.ds_v +
+            lmbda_t * gamma_t * ufl.ds_b +
+            lmbda_t('+') * gamma_t('+') * ufl.dS_h +
+            lmbda_t('+') * gamma_t('+') * ufl.dS_v)
+    l_t = (exact_sol * gamma_t * ufl.ds_t +
+            exact_sol * gamma_t * ufl.ds_v +
+            exact_sol * gamma_t * ufl.ds_b +
+            exact_sol('+') * gamma_t('+') * ufl.dS_h +
+            exact_sol('+') * gamma_t('+') * ufl.dS_v)
+
+    w_t_exact = Function(T)
+    vpb_t = LinearVariationalProblem(lhs(a_t-l_t), rhs(a_t-l_t), w_t_exact)
+    solver_t = LinearVariationalSolver(vpb_t)
+    solver_t.solve()
+    return w_t_exact
