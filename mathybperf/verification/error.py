@@ -33,3 +33,12 @@ def get_error(w, w2):
     return {"LinfTrace": linf_err_p,
             "L2Trace": l2_err_p}
 
+
+def check_var_problem(a, L, w):
+    """Double-checks that the solution is solving the variational problem"""
+    A = Tensor(a)
+    B = AssembledVector(w)
+    dat1 = assemble(A*B).dat.data
+    dat2 = assemble(L).dat.data
+    assert np.allclose(dat1[0], dat2[0], rtol=1.e-2), "Velocity in solution does not solve the variational problem."
+    assert np.allclose(dat1[1], dat2[1], rtol=1.e-2), "Pressure in solution does not solve the variational problem."
