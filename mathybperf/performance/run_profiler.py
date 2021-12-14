@@ -4,6 +4,7 @@ from mathybperf import *
 import numpy as np
 import pandas as pd
 from firedrake.petsc import PETSc
+import json
 
 # Citations.print_at_exit()
 
@@ -84,6 +85,10 @@ try:
 except FileExistsError:
     pass
 name += test
+
+# remember which parameter sets we used for the solver
+with open(name + 'performance_parameters.txt', 'w') as convert_file:
+     convert_file.write(json.dumps(perform_params))
 
 
 PETSc.Log.begin()
