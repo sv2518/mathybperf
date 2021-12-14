@@ -50,6 +50,5 @@ def problem(problem_bag, solver_bag, verification, new=True):
 
         # compare iterative to reference solution
         check_error(w, w2)
-    else: 
-        w2 = None
-    return  a, solver, quadrature_degree, (w, w2), solver_bag.mesh
+
+    return quadrature_degree, (w, w2,), (w_t, w_t_exact), solver_bag.mesh
