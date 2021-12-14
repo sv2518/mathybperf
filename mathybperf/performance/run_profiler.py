@@ -111,6 +111,7 @@ for deform in deformations:
                 PETSc.Sys.Print("Approximation order:", p)
                 PETSc.Sys.Print("\nDeformation: ", deform)
                 PETSc.Sys.Print("\nCell scaling: ", s)
+                PETSc.Sys.Print("\n# of cells per dim: ", c)
 
                 # get internal time data of solvers
                 # warm up solver
