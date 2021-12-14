@@ -159,7 +159,8 @@ for deform in deformations:
                             "H1Pres": errors[2][1],
                             "HDivVelo": errors[2][0],  
                 }
-                PETSc.Sys.Print("\n error: ", errors[1][1])
+                PETSc.Sys.Print("\n error u : ", errors[1][0])
+                PETSc.Sys.Print("\n error p: ", errors[1][1])
                 tas_data.update(accuracy_data)
 
                 # write out data to .csv
