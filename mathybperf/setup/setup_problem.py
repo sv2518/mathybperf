@@ -24,11 +24,22 @@ def problem(problem_bag, solver_bag, verification, new=True):
 
     # verification of error
     if verification:
-        # if problem_bag.deformation == 0:
-        #     check_facetarea_and_cellvolume(U)
-        w2 = Function(W)
-        w2.sub(0).project(grad(solver_bag.exact_solution(problem_bag.scaling)))
-        w2.sub(1).project(solver_bag.exact_solution(problem_bag.scaling))
+        # check some geometric quantities
+        if problem_bag.deformation == [0]:
+            check_facetarea_and_cellvolume(problem_bag.space[2])
+
+        # plug iterative solution in the variational problem
+        check_var_problem(a, L, w)
+    
+        # compare iterative solution to reference solution
+        w2 = Function(problem_bag.space[0])
+        w2.sub(0).project(ufl.grad(exact_sol))
+        w2.sub(1).project(exact_sol)
+
+        # double check that the reference solution is solving the variational problem
+        check_var_problem(a, L, w2.sub(1))
+
+        # compare iterative to reference solution
         check_error(w, w2)
     else: 
         w2 = None
