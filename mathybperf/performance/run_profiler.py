@@ -1,13 +1,11 @@
-from firedrake import Citations
-from firedrake.preconditioners import base
 from mathybperf import *
-import numpy as np
 import pandas as pd
 from firedrake.petsc import PETSc
 import json
-import os
-from utils.solver_utils import SolverBag
-
+from mathybperf.utils.solver_utils import SolverBag
+import argparse
+from firedrake.petsc import OptionsManager
+import importlib
 
 ######################################
 ##############   MAIN   ##############
@@ -15,125 +13,108 @@ from utils.solver_utils import SolverBag
 
 parameters["pyop2_options"]["lazy_evaluation"] = False
 
+def fetch_info():
+    """GENERAL SETUP
+       Information are fetched from shell script run_profiler.sh 
+    """
 
-#########    GENERAL SETUP   ####
-gt_params_nested = {"mg_coarse": mg_jack,
-                    "mg_levels": gt_levels_cheby}
+    parser = argparse.ArgumentParser(description='Fetch setup from shell script.')
+    parser.add_argument('name', type=str,
+                        help='an integer for the accumulator')
+    parser.add_argument('parameters', type=str,
+                        help='Parmeter set name to solve the variational problem.')
+    parser.add_argument('p', type=int,
+                        help="""Approximation degree of RT of the function space.
+                              DG space will have one less.""")
+    parser.add_argument('gtmg_levels', type=int,
+                        help='Number of levels in GTMG.')
+    parser.add_argument('quadrilateral', type=bool,
+                        help='Quadrilateral cells?')
+    parser.add_argument('scaling', type=float, default=[0],
+                        help='By which factor to scale the cell.')
+    parser.add_argument('deform', type=float, default=[0],
+                        help='By which factor to deform the cell.')
+    parser.add_argument('trafo', type=str, default="",
+                        help='Should the deformation be affine, non-affine or none?')
+    parser.add_argument('c', type=int,
+                        help="""Number of cells per dimension.
+                                This is essentially the mesh size parameter.""")
+    parser.add_argument('--add_to_quad_degree', type=int, nargs="+", default=[0,0],
+                        help='In- or decrease the quadrature degree by a tuple.')
+    parser.add_argument('-log_view', type=str,
+                        help="""Flamegraph?""")
+    parser.add_argument('--clean', action="store_true", help='Clean firdrake caches?')
+    parser.add_argument('--verification', action="store_true",  help='Should errors on results be checked?')
 
-# setup test
-perform_params = {'mat_type': 'matfree',
-                  'ksp_type': 'preonly',
-                  'pc_type': 'python',
-                  'pc_python_type': 'firedrake.HybridizationPC',
-                  'hybridization': {'ksp_type': 'cg',
-                                    'pc_type': 'python',
-                                    'ksp_rtol': 1e-8,
-                                    'mat_type': 'matfree',
-                                    'pc_python_type': 'firedrake.GTMGPC',
-                                    'gt': gt_params_nested}}
-baseline_params = {"ksp_type": "gmres",
-                    'pc_type': 'ilu',
-                    "ksp_gmres_restart": 100,
-                    'ksp_rtol': 1.e-12}
+    return parser.parse_args()
 
-gtmg_levels = 2
-solver_bag = SolverBag(perform_params, baseline_params, gtmg_levels)
-
+args = fetch_info()
+# Penalty is set the same for all runs
 penalty = lambda p, d: (p+1)**3
-orders = range(6)
-scalings = [1.0]
-itmaxs = [4]  # script is not working for varyin itmaxs rn
-deformations = [0] # 0.5*d for d in range(0,21)
-affine_trafo = False
-add_to_quad_degree = (0, 0)
-cells_per_dim = range(1, 5)
-quadrilateral = True
+warmup = "warm_up" if args.clean else "warmed_up"
+args.add_to_quad_degree = tuple(args.add_to_quad_degree)
+# Set parameters to the parameter set with the name specified in shell script
+importlib.import_module("mathybperf.setup.parameters")
+args.parameters = globals()[args.parameters]
 
-# setup output
-folder = "mathybperf/performance/results/mixed_poisson/"
-type = "affine/" if deformations and affine_trafo else "nonaffine/" if deformations else "nodeform/"
-case = "(p+1)**3/"
-test = "cgjacobi"
-name =  folder + type + case
-try:
-    os.makedirs(name)
-except FileExistsError:
-    pass
-name += test
 
-# remember which parameter sets we used for the solver
-with open(name + 'performance_parameters.txt', 'w') as convert_file:
+# problem setup
+tas_data = {}
+solver_bag = SolverBag(perform_params, baseline_params, args.gtmg_levels)
+problem_bag = ProblemBag(args.deform, args.scaling, args.trafo, args.quadrilateral,
+                         args.p, args.add_to_quad_degree, penalty, args.c)
+time_data = TimeData()
+
+# If the -log_view flag is passed you don't need to call
+# PETSc.Log.begin because it is done automatically.
+if "log_view" not in OptionsManager.commandline_options:
+    PETSc.Log.begin()
+PETSc.Sys.Print("Approximation order: ", args.p, "\n")
+PETSc.Sys.Print("Deformation: ", args.deform, "\n")
+PETSc.Sys.Print("Cell scaling: ", args.scaling, "\n")
+PETSc.Sys.Print("# of cells per dim: ", args.c, "\n")
+
+# get internal time data of solvers
+# warm up solver
+with PETSc.Log.Stage("stage"):
+    quad_degree, (w, w2), (w_t, w_t_exact), mesh = problem(problem_bag, solver_bag, verification=args.verification)
+    internal_timedata_cold = time_data.get_internal_timedata(warmup, mesh.comm)
+tas_data.update(internal_timedata_cold)
+
+# add general times spend on different parts
+external_timedata = time_data.get_external_timedata("update solve")
+tas_data.update(external_timedata)
+
+# add further information
+# setup information
+tas_data.update(vars(args))
+
+# gather dofs
+size_data = SizeData(w).get_split_data()
+tas_data.update(size_data)
+
+# gather errors
+accuracy_data = get_errors(w, w2)
+PETSc.Sys.Print("error u : ", accuracy_data["L2Velo"], "\n")
+PETSc.Sys.Print("error p: ", accuracy_data["L2Pres"], "\n")
+tas_data.update(accuracy_data)
+
+# gather dofs for trace
+size_data = SizeData(w_t).get_data()
+tas_data.update(size_data)
+
+# errors for trace
+accuracy_data = get_error(w_t, w_t_exact)
+PETSc.Sys.Print("error trace: ", accuracy_data["LinfTrace"], "\n")
+tas_data.update(accuracy_data)
+
+# write out data to .csv
+datafile = pd.DataFrame(tas_data, index=[0])
+print(tas_data)
+datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="w",header=True)
+
+# also remember which parameter sets we used for the solver
+with open(args.name + "_" + parameters + '_parameters.txt', 'w') as convert_file:
      convert_file.write(json.dumps(perform_params))
 
-# turn off threading
-os.system('export OMP_NUM_THREADS=1')
-
-PETSc.Log.begin()
-time_data = TimeData()
-tas_data_orders = []
-assert len(deformations) == 1 or len(scalings) == 1, "Can only loop over either, scalings or deformations"
-for deform in deformations:
-    for s in scalings:
-        for p in orders:
-            tas_data_cells = {}
-            for c in cells_per_dim:
-                tas_data = {}
-                # problem setup
-                problem_bag = ProblemBag(deform, s, affine_trafo, quadrilateral,
-                                        p, add_to_quad_degree, penalty, c)
-
-                PETSc.Sys.Print("Approximation order:", p)
-                PETSc.Sys.Print("\nDeformation: ", deform)
-                PETSc.Sys.Print("\nCell scaling: ", s)
-                PETSc.Sys.Print("\n# of cells per dim: ", c)
-
-                # get internal time data of solvers
-                # warm up solver
-                with PETSc.Log.Stage("warmup"):
-                    quad_degree, (w, w2), (w_t, w_t_exact), mesh = problem(problem_bag, solver_bag, verification=True)
-                    internal_timedata_cold = time_data.get_internal_timedata("warmup", "cold", mesh.comm)
-                    temp_internal_timedata_cold = time_data.get_internal_timedata("warmup", "warm", mesh.comm)#temp needed for subtraction 
-                tas_data.update(internal_timedata_cold)
-
-                # get timings for solving without assembly
-                with PETSc.Log.Stage("update solve"):
-                    quad_degree, (_, _), (_, _), mesh = problem(problem_bag, solver_bag, verification=True, new=False)
-                    temp_internal_timedata_warm = time_data.get_internal_timedata("update solve", "warm", mesh.comm)
-                internal_timedata_warm={key: temp_internal_timedata_warm[key]
-                                        for key in temp_internal_timedata_warm.keys()}
-                tas_data.update(internal_timedata_warm)
-
-                # add general times spend on different parts
-                external_timedata = time_data.get_external_timedata("update solve")
-                tas_data.update(external_timedata)
-
-                # add further information
-                # setup information
-                tas_data.update({"order": p,
-                                 "deform": deform,
-                                 "scalings": s,
-                                 "quadrature_degree": quad_degree[0]})
-
-                # gather dofs
-                size_data = SizeData(w).get_split_data()
-                tas_data.update(size_data)
-
-                # gather errors
-                accuracy_data = get_errors(w, w2)
-                PETSc.Sys.Print("\n error u : ", accuracy_data["L2Velo"])
-                PETSc.Sys.Print("\n error p: ", accuracy_data["L2Pres"])
-                tas_data.update(accuracy_data)
-    
-                # gather dofs for trace
-                size_data = SizeData(w_t).get_data()
-                tas_data.update(size_data)
-
-                # errors for trace
-                accuracy_data = get_error(w_t, w_t_exact)
-                PETSc.Sys.Print("\n error trace: ", accuracy_data["LinfTrace"])
-                tas_data.update(accuracy_data)
-
-                # write out data to .csv
-                datafile = pd.DataFrame(tas_data, index=[0])   
-                datafile.to_csv(name+f"_order{p}_cells{c}.csv",index=False,mode="w",header=True)
 

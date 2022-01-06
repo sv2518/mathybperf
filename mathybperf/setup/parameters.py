@@ -296,14 +296,18 @@ mg_param_amg = {'ksp_type': 'preonly', 'pc_type': 'gamg',
                             'ksp_max_it': 2, 'pc_type': 'bjacobi', 'sub_pc_type': 'sor'},
             'mg_coarse': {'ksp_type':'chebyshev', 'ksp_max_it':2,
                         'pc_type':'sor'}}
-mg_param_gmg = {'ksp_type': 'preonly', 'pc_type': 'mg',
+mg_param_gmg = {'ksp_type': 'preonly',
+                'pc_type': 'mg',
                 'ksp_rtol': 1E-8,
                 'pc_mg_levels':2,
                 'pc_mg_cycles': 'v',
                 'mg_levels': {'ksp_type': 'chebyshev',
-                            'ksp_max_it': 2, 'pc_type': 'bjacobi', 'sub_pc_type': 'sor'},
-                'mg_coarse': {'ksp_type':'chebyshev', 'ksp_max_it':2,
-                                'pc_type':'sor'}}
+                            'ksp_max_it': 2,
+                            'pc_type': 'bjacobi',
+                            'sub_pc_type': 'sor'},
+                'mg_coarse': {'ksp_type':'chebyshev',
+                              'ksp_max_it':2,
+                              'pc_type':'sor'}}
                         
 mg_jack = {"ksp_type": "preonly",
         "pc_type": "mg",
@@ -339,7 +343,7 @@ mgmatfree = {"snes_type": "ksponly",
                       "mg_coarse_assembled_pc_mat_mumps_icntl_14": 200,
                       "mg_levels_ksp_type": "chebyshev",
                       "mg_levels_ksp_max_it": 2,
-                      "mg_levels_pc_type": "jacobi",
+                      "mg_levels_pc_type": "none",
                       "snes_convergence_test": "skip"}
 p1pc = {"ksp_type": "cg",
         "pc_type": "python",
@@ -358,7 +362,7 @@ p1pc = {"ksp_type": "cg",
 
 gt_levels_cheby = {"ksp_type": "chebyshev",
                     "ksp_max_it": 3,
-                    "pc_type": "jacobi"
+                    "pc_type": "none"
                     }
 gt_levels_fancy = {"ksp_type": "richardson",
                     "ksp_max_it": 1,
@@ -410,3 +414,33 @@ lumatfree = {"ksp_type": "preonly",
             "pc_type": "python",
             "pc_python_type": "firedrake.AssembledPC",
             "assembled_pc_type": "lu"}
+
+gt_params_nested = {"mg_coarse": mgmatfree,
+                    "mg_levels": gt_levels_cheby,
+                    'mat_type': 'matfree'}
+
+# setup test
+perform_params = {'snes_type': 'ksponly',
+                  'mat_type': 'matfree',
+                  'ksp_type': 'preonly',
+                  'pc_type': 'python',
+                  'pc_python_type': 'firedrake.HybridizationPC',
+                  'hybridization': {'ksp_type': 'cg',
+                                    'pc_type': 'python',
+                                    'ksp_rtol': 1e-6,
+                                    'mat_type': 'matfree',
+                                    'ksp_max_it': 10,
+                                    # 'localsolve': {'ksp_type': 'preonly',
+                                    #                 'mat_type': 'matfree',
+                                    #                 'pc_type': 'fieldsplit',
+                                    #                 'pc_fieldsplit_type': 'schur'},
+                                    'pc_python_type': 'firedrake.GTMGPC',
+                                    'gt': gt_params_nested,
+                                    'ksp_view': None}}
+baseline_params = {'mat_type': 'matfree',
+                  'ksp_type': 'preonly',
+                  'pc_type': 'python',
+                  'pc_python_type': 'firedrake.HybridizationPC',
+                  'hybridization': {"ksp_type": "preonly",
+                                    'pc_type': 'lu',
+                                    'ksp_rtol': 1.e-16}}

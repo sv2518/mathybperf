@@ -6,7 +6,7 @@ from mpi4py import MPI
 class TimeData(object):
     #get internal solver specific times
     #state can be cold or warm
-    def get_internal_timedata(self, stage, state, comm):
+    def get_internal_timedata(self, stage, comm):
         internal_timedata={}
 
         # get the time data of the solver which would be used for an update in a PECE scheme
@@ -28,21 +28,21 @@ class TimeData(object):
 
         internal_timedata.update({
                 #Scalable Nonlinear Equations Solvers
-                "snes_time_upd"+state: comm.allreduce(snes, op=MPI.SUM) / comm.size,
+                "snes_time_upd": comm.allreduce(snes, op=MPI.SUM) / comm.size,
                 #scalable linear equations solvers
-                "ksp_time_upd"+state: comm.allreduce(ksp, op=MPI.SUM) / comm.size,
-                "pc_setup_time_upd"+state: comm.allreduce(pcsetup, op=MPI.SUM) / comm.size,
-                "pc_apply_time_upd"+state: comm.allreduce(pcapply, op=MPI.SUM) / comm.size,
-                "jac_eval_time_upd"+state:comm.allreduce(jac_eval, op=MPI.SUM) / comm.size,
-                "res_eval_time_upd"+state: comm.allreduce(residual, op=MPI.SUM) / comm.size,
-                "HybridInit"+state: comm.allreduce(hybridinit, op=MPI.SUM) / comm.size,
-                "HybridAssembly"+state: comm.allreduce(hybridassembly, op=MPI.SUM) / comm.size,
-                "HybridUpdate"+state: comm.allreduce(hybridupdate, op=MPI.SUM) / comm.size,
-                "HybridRhs"+state: comm.allreduce(elim, op=MPI.SUM) / comm.size,
-                "HybridRecover"+state: comm.allreduce(full_recon, op=MPI.SUM) / comm.size,
-                "HybridTraceSolve"+state: comm.allreduce(trace, op=MPI.SUM) / comm.size,
-                "HybridTotal"+state: hybridinit+hybridupdate+elim+full_recon+trace  ,  
-                "overall"+state: comm.allreduce(overall, op=MPI.SUM)/comm.size    
+                "ksp_time_upd": comm.allreduce(ksp, op=MPI.SUM) / comm.size,
+                "pc_setup_time_upd": comm.allreduce(pcsetup, op=MPI.SUM) / comm.size,
+                "pc_apply_time_upd": comm.allreduce(pcapply, op=MPI.SUM) / comm.size,
+                "jac_eval_time_upd":comm.allreduce(jac_eval, op=MPI.SUM) / comm.size,
+                "res_eval_time_upd": comm.allreduce(residual, op=MPI.SUM) / comm.size,
+                "HybridInit": comm.allreduce(hybridinit, op=MPI.SUM) / comm.size,
+                "HybridAssembly": comm.allreduce(hybridassembly, op=MPI.SUM) / comm.size,
+                "HybridUpdate": comm.allreduce(hybridupdate, op=MPI.SUM) / comm.size,
+                "HybridRhs": comm.allreduce(elim, op=MPI.SUM) / comm.size,
+                "HybridRecover": comm.allreduce(full_recon, op=MPI.SUM) / comm.size,
+                "HybridTraceSolve": comm.allreduce(trace, op=MPI.SUM) / comm.size,
+                "HybridTotal": hybridinit+hybridupdate+elim+full_recon+trace  ,  
+                "overall": comm.allreduce(overall, op=MPI.SUM)/comm.size    
                 })
         
         return internal_timedata
