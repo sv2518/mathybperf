@@ -55,7 +55,7 @@ warmup = "warm_up" if args.clean else "warmed_up"
 args.add_to_quad_degree = tuple(args.add_to_quad_degree)
 # Set parameters to the parameter set with the name specified in shell script
 importlib.import_module("mathybperf.setup.parameters")
-args.parameters = globals()[args.parameters]
+parameters = globals()[args.parameters]
 
 
 # problem setup
@@ -109,12 +109,12 @@ PETSc.Sys.Print("error trace: ", accuracy_data["LinfTrace"], "\n")
 tas_data.update(accuracy_data)
 
 # write out data to .csv
-datafile = pd.DataFrame(tas_data, index=[0])
-print(tas_data)
+datafile = pd.DataFrame(tas_data)
 datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="w",header=True)
 
 # also remember which parameter sets we used for the solver
-with open(args.name + "_" + parameters + '_parameters.txt', 'w') as convert_file:
+paramsfilename = args.name + "_" + args.parameters + '_parameters.txt'
+with open(paramsfilename, 'w') as convert_file:
      convert_file.write(json.dumps(perform_params))
 
 
