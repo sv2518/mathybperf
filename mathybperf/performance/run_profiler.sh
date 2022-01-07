@@ -147,4 +147,8 @@ CWEBPAGE2="curl "$WEBPAGE$BASEP"_warmed_up_flame.svg>"$FLAMENAME$BASEP"_warmed_u
 CWEBPAGE3="curl "$WEBPAGE$PERFORMP"_warm_up_flame.svg>"$FLAMENAME$PERFORMP"_warm_up_flame.svg"
 CWEBPAGE4="curl "$WEBPAGE$PERFORMP"_warmed_up_flame.svg>"$FLAMENAME$PERFORMP"_warmed_up_flame.svg"
 touch $FLAMENAME"curlthesvgs.sh"
-echo "\#!/bin/sh\nmkdir -p ./svgs/"$FLAMENAME"\n cd svgs\n""$CWEBPAGE1""\n""$CWEBPAGE2""\n""$CWEBPAGE3""\n""$CWEBPAGE4""\n" > $FLAMENAME"curlthesvgs.sh"
+echo "#!/bin/sh\nmkdir -p ./svgs/"$FLAMENAME"\n cd svgs\n""$CWEBPAGE1""\n""$CWEBPAGE2""\n""$CWEBPAGE3""\n""$CWEBPAGE4""\n" > $FLAMENAME"curlthesvgs.sh"
+git add $FLAMENAME"curlthesvgs.sh"
+git commit -m "New script to fetch flamegraphs was generated."
+CURRENT_BRANCH=$(git branch --show-current)
+git push origin $CURRENT_BRANCH
