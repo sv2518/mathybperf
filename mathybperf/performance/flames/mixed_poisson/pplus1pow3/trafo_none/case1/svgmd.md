@@ -1,3 +1,3 @@
 
-![Overview](https://raw.github.com/sv2518/mathybperf/new/main/mathybperf/performance/flames/mixed_poisson/pplus1pow3/trafo_none/case1/baseline_params_warm_up_flame.svg?sanitize=true)
-<img src="https://raw.github.com//sv2518/mathybperf/new/main/mathybperf/performance/flames/mixed_poisson/pplus1pow3/trafo_none/case1/baseline_params_warm_up_flame.svg?sanitize=true">
+![Overview](https://raw.github.com/sv2518/mathybperf/new/blob/mathybperf/performance/flames/mixed_poisson/pplus1pow3/trafo_none/case1/baseline_params_warm_up_flame.svg?sanitize=true)
+<img src="https://raw.github.com/sv2518/mathybperf/blob/main/mathybperf/performance/flames/mixed_poisson/pplus1pow3/trafo_none/case1/baseline_params_warm_up_flame.svg?sanitize=true">
