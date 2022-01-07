@@ -45,88 +45,106 @@ FLAMENAME='flames/mixed_poisson/pplus1pow3/'$TRAFOTYPE$CASE
 mkdir -p $NAME
 mkdir -p $FLAMENAME
 
-# file name is parameter set name
-for D in $DEFORM
-do
-    for S in $SCALING
+if ! $NORES
+then
+    # file name is parameter set name
+    for D in $DEFORM
     do
-        for P in $ORDERS
+        for S in $SCALING
         do
-            for C in $CELLSPD
+            for P in $ORDERS
             do
-                if ! $FLAME
-                then 
-                    FLARG=''
-                fi
+                for C in $CELLSPD
+                do
+                    if ! $FLAME
+                    then 
+                        FLARG=''
+                    fi
 
-                # run base case
-                PARAMS=$BASEP
-                NNAME=$NAME$PARAMS
-                FNAME=$FLAMENAME$PARAMS
-                firedrake-clean
-                NNAME+='_warm_up'
-                FNAME+='_warm_up'
-                if $FLAME
-                then
-                    FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
-                fi
-                python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $FLARG --add_to_quad_degree "${ATQD[@]}" --clean
-                if $FLAME
-                then
-                ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.html"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
-                fi
+                    # run base case
+                    PARAMS=$BASEP
+                    NNAME=$NAME$PARAMS
+                    FNAME=$FLAMENAME$PARAMS
+                    firedrake-clean
+                    NNAME+='_warm_up'
+                    FNAME+='_warm_up'
+                    if $FLAME
+                    then
+                        FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
+                    fi
+                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $FLARG --add_to_quad_degree "${ATQD[@]}" --clean
+                    if $FLAME
+                    then
+                    ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
+                    fi
 
-                NNAME=$NAME$PARAMS
-                FNAME=$FLAMENAME$PARAMS
-                NNAME+='_warmed_up'
-                FNAME+='_warmed_up'
-                if $FLAME
-                then
-                    FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
-                fi
-                python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $FLARG --add_to_quad_degree "${ATQD[@]}"
-                if $FLAME
-                then
-                ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.html"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
-                fi
+                    NNAME=$NAME$PARAMS
+                    FNAME=$FLAMENAME$PARAMS
+                    NNAME+='_warmed_up'
+                    FNAME+='_warmed_up'
+                    if $FLAME
+                    then
+                        FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
+                    fi
+                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $FLARG --add_to_quad_degree "${ATQD[@]}"
+                    if $FLAME
+                    then
+                    ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
+                    fi
 
-                # run perf case
-                PARAMS=$PERFORMP
-                NNAME=$NAME$PARAMS
-                FNAME=$FLAMENAME$PARAMS
-                firedrake-clean
-                NNAME+='_warm_up'
-                FNAME+='_warm_up'
-                if $FLAME
-                then
-                    FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
-                fi
-                python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $FLARG --add_to_quad_degree "${ATQD[@]}" --clean
-                if $FLAME
-                then
-                ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.html"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
-                fi
+                    # run perf case
+                    PARAMS=$PERFORMP
+                    NNAME=$NAME$PARAMS
+                    FNAME=$FLAMENAME$PARAMS
+                    firedrake-clean
+                    NNAME+='_warm_up'
+                    FNAME+='_warm_up'
+                    if $FLAME
+                    then
+                        FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
+                    fi
+                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $FLARG --add_to_quad_degree "${ATQD[@]}" --clean
+                    if $FLAME
+                    then
+                    ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
+                    fi
 
-                NNAME=$NAME$PARAMS
-                FNAME=$FLAMENAME$PARAMS
-                NNAME+='_warmed_up'
-                FNAME+='_warmed_up'
-                if $FLAME
-                then
-                    FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
-                fi
-                python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $FLARG --add_to_quad_degree "${ATQD[@]}"
-                if $FLAME
-                then
-                ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.html"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
-                fi
+                    NNAME=$NAME$PARAMS
+                    FNAME=$FLAMENAME$PARAMS
+                    NNAME+='_warmed_up'
+                    FNAME+='_warmed_up'
+                    if $FLAME
+                    then
+                        FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
+                    fi
+                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $FLARG --add_to_quad_degree "${ATQD[@]}"
+                    if $FLAME
+                    then
+                    ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
+                    fi
+                done
             done
         done
     done
-done
+    # Make new flamegraphs online accessible
+    git add $FLAMENAME*"_flame.svg"
+    git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
+    CURRENT_BRANCH=$(git branch --show-current)
+    git push origin $CURRENT_BRANCH
+fi
 
-# Make new flamegraphs online accessible
-git add $FLAMENAME*"_flame.html"
-git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
-CURRENT_BRANCH=$(git branch --show-current)
-git push origin $CURRENT_BRANCH
+
+WEBPAGE="https://raw.githubusercontent.com/sv2518/mathybperf/main/mathybperf/performance/"$FLAMENAME
+WEBPAGE1=$WEBPAGE$BASEP"_warm_up_flame.svg"
+WEBPAGE2=$WEBPAGE$BASEP"_warmed_up_flame.svg"
+WEBPAGE3=$WEBPAGE$PERFORMP"warm_up_flame.svg"
+WEBPAGE4=$WEBPAGE$PERFORMP"warmed_up_flame.svg"
+touch "$FLAMENAME""linkstosvgs.txt"
+echo "$WEBPAGE1""\n""$WEBPAGE2""\n""$WEBPAGE3""\n""$WEBPAGE4""\n" > "$FLAMENAME""linkstosvgs.txt"
+
+CWEBPAGE1="curl "$WEBPAGE$BASEP"_warm_up_flame.svg>"$FLAMENAME$BASEP"_warm_up_flame.svg"
+CWEBPAGE2="curl "$WEBPAGE$BASEP"_warmed_up_flame.svg>"$FLAMENAME$BASEP"_warmed_up_flame.svg"
+CWEBPAGE3="curl "$WEBPAGE$PERFORMP"_warm_up_flame.svg>"$FLAMENAME$PERFORMP"_warm_up_flame.svg"
+CWEBPAGE4="curl "$WEBPAGE$PERFORMP"_warmed_up_flame.svg>"$FLAMENAME$PERFORMP"_warmed_up_flame.svg"
+touch $FLAMENAME"curlthesvgs.sh"
+echo "\#!/bin/sh\nmkdir -p ./svgs/"$FLAMENAME"\n cd svgs\n""$CWEBPAGE1""\n""$CWEBPAGE2""\n""$CWEBPAGE3""\n""$CWEBPAGE4""\n" > $FLAMENAME"curlthesvgs.sh"
