@@ -330,21 +330,6 @@ mgb = {"snes_type": "ksponly",
             "mg_coarse_fieldsplit_redundant_pc_type": "lu",
             "mg_coarse_ksp_type": "preonly",
             "snes_convergence_test": "skip"} # does not work bc additive I think
-mgmatfree = {"snes_type": "ksponly",
-                      "ksp_type": "preonly",
-                      "mat_type": "matfree",
-                      "pc_type": "mg",
-                      "pc_mg_type": "full",
-                      "mg_coarse_ksp_type": "preonly",
-                      "mg_coarse_pc_type": "python",
-                      "mg_coarse_pc_python_type": "firedrake.AssembledPC",
-                      "mg_coarse_assembled_pc_type": "lu",
-                      "mg_coarse_assembled_pc_factor_mat_solver_type": "mumps",
-                      "mg_coarse_assembled_pc_mat_mumps_icntl_14": 200,
-                      "mg_levels_ksp_type": "chebyshev",
-                      "mg_levels_ksp_max_it": 2,
-                      "mg_levels_pc_type": "none",
-                      "snes_convergence_test": "skip"}
 p1pc = {"ksp_type": "cg",
         "pc_type": "python",
         "mat_type": "matfree",
@@ -360,10 +345,6 @@ p1pc = {"ksp_type": "cg",
             "pc_factor_mat_solver_type": "mumps"
         }}
 
-gt_levels_cheby = {"ksp_type": "chebyshev",
-                    "ksp_max_it": 3,
-                    "pc_type": "none"
-                    }
 gt_levels_fancy = {"ksp_type": "richardson",
                     "ksp_max_it": 1,
                     "pc_type": "fieldsplit",
@@ -415,11 +396,30 @@ lumatfree = {"ksp_type": "preonly",
             "pc_python_type": "firedrake.AssembledPC",
             "assembled_pc_type": "lu"}
 
+
+# setup test
+
+mgmatfree = {"snes_type": "ksponly",
+            "ksp_type": "preonly",
+            "mat_type": "matfree",
+            "pc_type": "mg",
+            "pc_mg_type": "full",
+            "mg_coarse_ksp_type": "preonly",
+            "mg_coarse_pc_type": "python",
+            "mg_coarse_pc_python_type": "firedrake.AssembledPC",
+            "mg_coarse_assembled_pc_type": "lu",
+            "mg_coarse_assembled_pc_factor_mat_solver_type": "mumps",
+            "mg_coarse_assembled_pc_mat_mumps_icntl_14": 200,
+            "mg_levels_ksp_type": "chebyshev",
+            "mg_levels_ksp_max_it": 3,
+            "mg_levels_pc_type": "none"}
+gt_levels_cheby = {"ksp_type": "chebyshev",
+                    "ksp_max_it": 3,
+                    "pc_type": "none"
+                    }
 gt_params_nested = {"mg_coarse": mgmatfree,
                     "mg_levels": gt_levels_cheby,
                     'mat_type': 'matfree'}
-
-# setup test
 perform_params = {'snes_type': 'ksponly',
                   'mat_type': 'matfree',
                   'ksp_type': 'preonly',
@@ -427,16 +427,34 @@ perform_params = {'snes_type': 'ksponly',
                   'pc_python_type': 'firedrake.HybridizationPC',
                   'hybridization': {'ksp_type': 'cg',
                                     'pc_type': 'python',
-                                    'ksp_rtol': 1e-6,
                                     'mat_type': 'matfree',
-                                    'ksp_max_it': 10,
                                     # 'localsolve': {'ksp_type': 'preonly',
                                     #                 'mat_type': 'matfree',
                                     #                 'pc_type': 'fieldsplit',
                                     #                 'pc_fieldsplit_type': 'schur'},
                                     'pc_python_type': 'firedrake.GTMGPC',
                                     'gt': gt_params_nested,
-                                    'ksp_view': None}}
+                                    'ksp_view': None
+                                    }}
+
+
+jacks_baseline_params = {'mat_type': 'matfree',
+                    'ksp_type': 'preonly',
+                    'pc_type': 'python',
+                    'pc_python_type': 'firedrake.HybridizationPC',
+                    'hybridization': {'ksp_type': 'cg',
+                                        'pc_type': 'python',
+                                        'pc_python_type': 'firedrake.GTMGPC',
+                                        'gt': {'mg_levels': {'ksp_type': 'chebyshev',
+                                                            'pc_type': 'jacobi',
+                                                            'ksp_max_it': 3},
+                                            'mg_coarse': {'ksp_type': 'preonly',
+                                                            'pc_type': 'mg',
+                                                            'pc_mg_type': 'full',
+                                                            'mg_levels': {'ksp_type': 'chebyshev',
+                                                                        'pc_type': 'jacobi',
+                                                                        'ksp_max_it': 3}}}}}
+
 baseline_params = {'mat_type': 'matfree',
                   'ksp_type': 'preonly',
                   'pc_type': 'python',
