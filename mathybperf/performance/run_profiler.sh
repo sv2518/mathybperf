@@ -2,6 +2,8 @@
 
 # turn off threading
 export OMP_NUM_THREADS=1
+source /Users/sv2518/firedrakeinstalls/firedrake/bin/activate
+cd /Users/sv2518/firedrakeexamples/mathybperf/mathybperf/performance
 
 # mode of the script, options are:
 # do we want to generate a tex from this?
@@ -46,7 +48,7 @@ FLAMENAME='flames/mixed_poisson/pplus1pow3/'$TRAFOTYPE$CASE
 mkdir -p $NAME
 mkdir -p $FLAMENAME
 
-if ! $NORES
+if $DORES
 then
     # file name is parameter set name
     for D in $DEFORM
@@ -134,22 +136,22 @@ then
     git push origin $CURRENT_BRANCH
 fi
 
-
+mkdir -p "../report/"$FLAMENAME
 WEBPAGE="https://raw.githubusercontent.com/sv2518/mathybperf/main/mathybperf/performance/"$FLAMENAME
 WEBPAGE1=$WEBPAGE$BASEP"_warm_up_flame.svg"
 WEBPAGE2=$WEBPAGE$BASEP"_warmed_up_flame.svg"
 WEBPAGE3=$WEBPAGE$PERFORMP"warm_up_flame.svg"
 WEBPAGE4=$WEBPAGE$PERFORMP"warmed_up_flame.svg"
 NOTE="\nEasier way is to run curl -OL "$WEBPAGE"curlthesvgs.sh\n and sh ./curlthesvgs.sh."
-touch "$FLAMENAME""linkstosvgs.txt"
-echo "$WEBPAGE1""\n""$WEBPAGE2""\n""$WEBPAGE3""\n""$WEBPAGE4""\n"$NOTE > "$FLAMENAME""linkstosvgs.txt"
+touch "../report/"$FLAMENAME"linkstosvgs.txt"
+echo $WEBPAGE1"\n"$WEBPAGE2"\n"$WEBPAGE3"\n"$WEBPAGE4"\n"$NOTE > "../report/"$FLAMENAME"linkstosvgs.txt"
 
 CWEBPAGE1="curl "$WEBPAGE$BASEP"_warm_up_flame.svg>"$FLAMENAME$BASEP"_warm_up_flame.svg"
 CWEBPAGE2="curl "$WEBPAGE$BASEP"_warmed_up_flame.svg>"$FLAMENAME$BASEP"_warmed_up_flame.svg"
 CWEBPAGE3="curl "$WEBPAGE$PERFORMP"_warm_up_flame.svg>"$FLAMENAME$PERFORMP"_warm_up_flame.svg"
 CWEBPAGE4="curl "$WEBPAGE$PERFORMP"_warmed_up_flame.svg>"$FLAMENAME$PERFORMP"_warmed_up_flame.svg"
 touch $FLAMENAME"curlthesvgs.sh"
-echo "#!/bin/sh\nmkdir -p ./svgs/"$FLAMENAME"\ncd svgs\n""$CWEBPAGE1""\n""$CWEBPAGE2""\n""$CWEBPAGE3""\n""$CWEBPAGE4""\n" > $FLAMENAME"curlthesvgs.sh"
+echo "#!/bin/sh\nmkdir -p ./svgs/"$FLAMENAME"\ncd svgs\n"$CWEBPAGE1"\n"$CWEBPAGE2"\n"$CWEBPAGE3"\n"$CWEBPAGE4"\n" > $FLAMENAME"curlthesvgs.sh"
 git add $FLAMENAME"curlthesvgs.sh"
 git commit -m "New script to fetch flamegraphs was generated."
 CURRENT_BRANCH=$(git branch --show-current)
