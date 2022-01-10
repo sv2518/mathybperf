@@ -22,6 +22,7 @@ class SolverBag(object):
         q = TestFunction(P1)
         return inner(grad(p), grad(q))*dx
 
-    def exact_solution(self, L):
+    def exact_solution(self, L, type="quadratic"):
         x = SpatialCoordinate(self.mesh)
-        return x[0]*(L-x[0])*x[1]*(L-x[1])*x[2]*(L-x[2]) * exp(L-x[0]+1)
+        base = x[0]*(L-x[0])*x[1]*(L-x[1])*x[2]*(L-x[2])
+        return base if type == "quadratic" else base * exp(L-x[0]+1) if type == "exponential" else None

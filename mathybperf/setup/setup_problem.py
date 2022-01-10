@@ -14,13 +14,13 @@ def problem(problem_bag, solver_bag, verification, new=True):
         solver_bag.mesh = problem_bag.mesh
 
     # calculate exact solution on the new mesh before we setup the forms because we do MMS
-    exact_sol = solver_bag.exact_solution(problem_bag.scaling)
+    exact_sol = solver_bag.exact_solution(problem_bag.scaling, problem_bag.exact_sol_type)
 
     if reset:
         problem_bag.space = RT_DQ_3D(problem_bag.order, problem_bag.mesh)
-        problem_bag.var_problem = mixed_poisson(problem_bag.space[0],
-                                                problem_bag.add_to_quad_degree,
-                                                exact_sol)
+        problem_bag.var_problem, problem_bag.var_problem_repr = mixed_poisson(problem_bag.space[0],
+                                                                              problem_bag.add_to_quad_degree,
+                                                                              exact_sol)
     
     # solve problem
     a, L, quadrature_degree = problem_bag.var_problem

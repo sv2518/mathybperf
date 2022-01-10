@@ -18,7 +18,8 @@ def est_degree_calculation(form):
 class ProblemBag(object):
     
     def __init__(self, deformation, scaling, affine_trafo, quadrilateral,
-                 order, add_to_quad_degree, penalty, cells_per_dim):
+                 order, add_to_quad_degree, penalty, cells_per_dim,
+                 exact_sol_type):
         self.deformation = deformation
         self.scaling = scaling
         self.affine_trafo = affine_trafo
@@ -27,6 +28,7 @@ class ProblemBag(object):
         self.add_to_quad_degree = add_to_quad_degree
         self.penalty = penalty
         self.cells_per_dim = cells_per_dim
+        self.exact_sol_type = exact_sol_type
         self.mesh = None
         self.space = None
         self.var_problem = None

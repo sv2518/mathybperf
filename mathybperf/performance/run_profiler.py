@@ -39,6 +39,9 @@ def fetch_info():
     parser.add_argument('c', type=int,
                         help="""Number of cells per dimension.
                                 This is essentially the mesh size parameter.""")
+    parser.add_argument('exact_sol_type', type=str,
+                        help="""Type of the exact solution.
+                                Can be quadratic or exponential at the moment.""")
     parser.add_argument('--add_to_quad_degree', type=int, nargs="+", default=[0,0],
                         help='In- or decrease the quadrature degree by a tuple.')
     parser.add_argument('-log_view', type=str,
@@ -62,7 +65,7 @@ parameters = globals()[args.parameters]
 tas_data = {}
 solver_bag = SolverBag(perform_params, baseline_params, args.gtmg_levels)
 problem_bag = ProblemBag(args.deform, args.scaling, args.trafo, args.quadrilateral,
-                         args.p, args.add_to_quad_degree, penalty, args.c)
+                         args.p, args.add_to_quad_degree, penalty, args.c, args.exact_sol_type)
 time_data = TimeData()
 
 # If the -log_view flag is passed you don't need to call
