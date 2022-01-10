@@ -143,13 +143,13 @@ fi
 # but a note that explain how to fetch this automatically to a local repo
 # FIXME links don't work because I changed the repo structure
 WEBPAGE="https://raw.githubusercontent.com/sv2518/mathybperf/main/mathybperf/performance/"$BASEFLAMENAME
-WEBPAGE1=$WEBPAGE$BASEP"_warm_up_flame.svg"
-WEBPAGE2=$WEBPAGE$BASEP"_warmed_up_flame.svg"
-WEBPAGE3=$WEBPAGE$PERFORMP"warm_up_flame.svg"
-WEBPAGE4=$WEBPAGE$PERFORMP"warmed_up_flame.svg"
+WEBPAGE1="\url{"$WEBPAGE$BASEP"_warm_up_flame.svg}"
+WEBPAGE2="\url{"$WEBPAGE$BASEP"_warmed_up_flame.svg}"
+WEBPAGE3="\url{"$WEBPAGE$PERFORMP"warm_up_flame.svg}"
+WEBPAGE4="\url{"$WEBPAGE$PERFORMP"warmed_up_flame.svg}"
 NOTE="\nEasier way is to run curl -OL "$WEBPAGE"curlthesvgs.sh\n and sh ./curlthesvgs.sh."
-touch $BASEFLAMENAME"linkstosvgs.txt"
-echo $WEBPAGE1"\n"$WEBPAGE2"\n"$WEBPAGE3"\n"$WEBPAGE4"\n"$NOTE > $BASEFLAMENAME"linkstosvgs.txt"
+touch $BASEFLAMENAME"linkstosvgs.tex"
+echo $WEBPAGE1"\n"$WEBPAGE2"\n"$WEBPAGE3"\n"$WEBPAGE4"\n"$NOTE > $BASEFLAMENAME"linkstosvgs.tex"
 
 # Generate and publish script to fetch the svg files
 CWEBPAGE1="curl "$WEBPAGE$BASEP"_warm_up_flame.svg>"$BASEFLAMENAME$BASEP"_warm_up_flame.svg"
@@ -171,10 +171,10 @@ cp $SCRIPT "$BASENAME"$SCRIPT
 PATH_TO_REPORT='../../../mathybperf_report/61dc091dbf10034613ed0daa/'
 find ./results -type f | grep -i setup.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
 find ./results -type f | grep -i log.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
-find ./flames -type f | grep -i linkstosvgs.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
+find ./flames -type f | grep -i linkstosvgs.tex$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
 find ./results -type f | grep -i setup.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {} 
 find ./results -type f | grep -i log.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {} 
-find ./flames -type f | grep -i linkstosvgs.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {}
+find ./flames -type f | grep -i linkstosvgs.tex$ | xargs -I{} git -C $PATH_TO_REPORT add {}
 git -C $PATH_TO_REPORT commit -m "New results"
 git -C $PATH_TO_REPORT pull origin master
 git -C $PATH_TO_REPORT push origin master
