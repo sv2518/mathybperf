@@ -44,10 +44,11 @@ def fetch_info():
                                 Can be quadratic or exponential at the moment.""")
     parser.add_argument('--add_to_quad_degree', type=int, nargs="+", default=[0,0],
                         help='In- or decrease the quadrature degree by a tuple.')
+    parser.add_argument('--projectexactsol', type=bool,
+                        help='Should the exact solution on the trace be projected so that we know the error?')
     parser.add_argument('-log_view', type=str,
                         help="""Flamegraph?""")
     parser.add_argument('--clean', action="store_true", help='Clean firdrake caches?')
-    parser.add_argument('--projectexactsol', type=bool,  help='Should the exact solution on the trace be projected so that we know the error?')
     parser.add_argument('--verification', action="store_true",  help='Should errors on results be checked?')
 
     return parser.parse_args()
@@ -113,7 +114,7 @@ tas_data.update(accuracy_data)
 # write out data to .csv
 datafile = pd.DataFrame(tas_data)
 datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="w",header=True)
-PETSc.Sys.Print("Saved information are:", str(tas_data))
+PETSc.Sys.Print("\nSaved information are:", str(tas_data))
 
 # also remember which parameter sets we used for the solver
 paramsfilename = args.name + "_" + args.parameters + '_parameters.txt'
@@ -121,6 +122,6 @@ with open(paramsfilename, 'w') as convert_file:
      convert_file.write(json.dumps(perform_params))
 
 # also remember which parameter sets we used for the solver
-setup_filename = args.name + "_" + args.parameters + '_setup.txt'
+setup_filename = args.name + '_setup.txt'
 with open(setup_filename, 'w') as convert_file:
      convert_file.write(str(problem_bag))
