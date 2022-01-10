@@ -55,10 +55,13 @@ args = fetch_info()
 # Penalty is set the same for all runs
 penalty = lambda p, d: (p+1)**3
 warmup = "warm_up" if args.clean else "warmed_up"
+PETSc.Sys.Print("Running: ", warmup+"\n")
 args.add_to_quad_degree = tuple(args.add_to_quad_degree)
 # Set parameters to the parameter set with the name specified in shell script
 importlib.import_module("mathybperf.setup.parameters")
 parameters = globals()[args.parameters]
+PETSc.Sys.Print("with params: ", args.parameters+"\n")
+PETSc.Sys.Print("defined as: ", str(parameters)+"\n")
 
 
 # problem setup
@@ -72,10 +75,6 @@ time_data = TimeData()
 # PETSc.Log.begin because it is done automatically.
 if "log_view" not in OptionsManager.commandline_options:
     PETSc.Log.begin()
-PETSc.Sys.Print("Approximation order: ", args.p, "\n")
-PETSc.Sys.Print("Deformation: ", args.deform, "\n")
-PETSc.Sys.Print("Cell scaling: ", args.scaling, "\n")
-PETSc.Sys.Print("# of cells per dim: ", args.c, "\n")
 
 # get internal time data of solvers
 # warm up solver
@@ -98,8 +97,6 @@ tas_data.update(size_data)
 
 # gather errors
 accuracy_data = get_errors(w, w2)
-PETSc.Sys.Print("error u : ", accuracy_data["L2Velo"], "\n")
-PETSc.Sys.Print("error p: ", accuracy_data["L2Pres"], "\n")
 tas_data.update(accuracy_data)
 
 # gather dofs for trace
@@ -108,16 +105,19 @@ tas_data.update(size_data)
 
 # errors for trace
 accuracy_data = get_error(w_t, w_t_exact)
-PETSc.Sys.Print("error trace: ", accuracy_data["LinfTrace"], "\n")
 tas_data.update(accuracy_data)
 
 # write out data to .csv
 datafile = pd.DataFrame(tas_data)
 datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="w",header=True)
+PETSc.Sys.Print("Saved information are:", str(tas_data))
 
 # also remember which parameter sets we used for the solver
 paramsfilename = args.name + "_" + args.parameters + '_parameters.txt'
 with open(paramsfilename, 'w') as convert_file:
      convert_file.write(json.dumps(perform_params))
 
-
+# also remember which parameter sets we used for the solver
+setup_filename = args.name + "_" + args.parameters + '_setup.txt'
+with open(setup_filename, 'w') as convert_file:
+     convert_file.write(str(problem_bag))

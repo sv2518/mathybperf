@@ -32,3 +32,17 @@ class ProblemBag(object):
         self.mesh = None
         self.space = None
         self.var_problem = None
+        self.var_problem_repr = ""
+    
+    def __str__(self):
+        return (
+                f"\nPROBLEM SETUP:\n"
+                f"Approximation order: {self.order}\n"
+                f"Cells per dimension: {self.cells_per_dim}\n"
+                f"Deformation: {self.deformation}\n"
+                f"Cell scaling: {self.scaling}\n"
+                f"Cell deformation transformation: {self.affine_trafo}\n"
+                f"Quadrilateral cells?: {self.quadrilateral}\n"
+                f"Change to quadrature degree: {self.add_to_quad_degree}\n"
+                f"Type of the exact solution (and rhs): {self.exact_sol_type}\n"
+               ) + self.var_problem_repr
