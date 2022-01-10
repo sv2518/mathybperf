@@ -139,23 +139,26 @@ then
     git push origin $CURRENT_BRANCH
 fi
 
-mkdir -p "../report/"$FLAMENAME
-WEBPAGE="https://raw.githubusercontent.com/sv2518/mathybperf/main/mathybperf/performance/"$FLAMENAME
+# Save the links to the svgs in a file for easy access from the report
+# but a note that explain how to fetch this automatically to a local repo
+# FIXME links don't work because I changed the repo structure
+WEBPAGE="https://raw.githubusercontent.com/sv2518/mathybperf/main/mathybperf/performance/"$BASEFLAMENAME
 WEBPAGE1=$WEBPAGE$BASEP"_warm_up_flame.svg"
 WEBPAGE2=$WEBPAGE$BASEP"_warmed_up_flame.svg"
 WEBPAGE3=$WEBPAGE$PERFORMP"warm_up_flame.svg"
 WEBPAGE4=$WEBPAGE$PERFORMP"warmed_up_flame.svg"
 NOTE="\nEasier way is to run curl -OL "$WEBPAGE"curlthesvgs.sh\n and sh ./curlthesvgs.sh."
-touch "../report/"$FLAMENAME"linkstosvgs.txt"
-echo $WEBPAGE1"\n"$WEBPAGE2"\n"$WEBPAGE3"\n"$WEBPAGE4"\n"$NOTE > "../report/"$FLAMENAME"linkstosvgs.txt"
+touch $BASEFLAMENAME"linkstosvgs.txt"
+echo $WEBPAGE1"\n"$WEBPAGE2"\n"$WEBPAGE3"\n"$WEBPAGE4"\n"$NOTE > $BASEFLAMENAME"linkstosvgs.txt"
 
-CWEBPAGE1="curl "$WEBPAGE$BASEP"_warm_up_flame.svg>"$FLAMENAME$BASEP"_warm_up_flame.svg"
-CWEBPAGE2="curl "$WEBPAGE$BASEP"_warmed_up_flame.svg>"$FLAMENAME$BASEP"_warmed_up_flame.svg"
-CWEBPAGE3="curl "$WEBPAGE$PERFORMP"_warm_up_flame.svg>"$FLAMENAME$PERFORMP"_warm_up_flame.svg"
-CWEBPAGE4="curl "$WEBPAGE$PERFORMP"_warmed_up_flame.svg>"$FLAMENAME$PERFORMP"_warmed_up_flame.svg"
-touch $FLAMENAME"curlthesvgs.sh"
-echo "#!/bin/sh\nmkdir -p ./svgs/"$FLAMENAME"\ncd svgs\n"$CWEBPAGE1"\n"$CWEBPAGE2"\n"$CWEBPAGE3"\n"$CWEBPAGE4"\n" > $FLAMENAME"curlthesvgs.sh"
-git add $FLAMENAME"curlthesvgs.sh"
+# Generate and publish script to fetch the svg files
+CWEBPAGE1="curl "$WEBPAGE$BASEP"_warm_up_flame.svg>"$BASEFLAMENAME$BASEP"_warm_up_flame.svg"
+CWEBPAGE2="curl "$WEBPAGE$BASEP"_warmed_up_flame.svg>"$BASEFLAMENAME$BASEP"_warmed_up_flame.svg"
+CWEBPAGE3="curl "$WEBPAGE$PERFORMP"_warm_up_flame.svg>"$BASEFLAMENAME$PERFORMP"_warm_up_flame.svg"
+CWEBPAGE4="curl "$WEBPAGE$PERFORMP"_warmed_up_flame.svg>"$BASEFLAMENAME$PERFORMP"_warmed_up_flame.svg"
+touch $BASEFLAMENAME"curlthesvgs.sh"
+echo "#!/bin/sh\nmkdir -p ./svgs/"$BASEFLAMENAME"\ncd svgs\n"$CWEBPAGE1"\n"$CWEBPAGE2"\n"$CWEBPAGE3"\n"$CWEBPAGE4"\n" > $BASEFLAMENAME"curlthesvgs.sh"
+git add $BASEFLAMENAME"curlthesvgs.sh"
 git commit -m "New script to fetch flamegraphs was generated."
 CURRENT_BRANCH=$(git branch --show-current)
 git push origin $CURRENT_BRANCH
