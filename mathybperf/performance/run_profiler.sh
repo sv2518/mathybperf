@@ -44,10 +44,8 @@ CASE='/case1/'
 FOLDER='results/mixed_poisson/'
 FOLDER+='pplus1pow3/'  # penalty set permanently to this
 TRAFOTYPE='trafo_'$TRAFO
-NAME=$FOLDER$TRAFOTYPE$CASE
-FLAMENAME='flames/mixed_poisson/pplus1pow3/'$TRAFOTYPE$CASE
-mkdir -p $NAME
-mkdir -p $FLAMENAME
+BASENAME=$FOLDER$TRAFOTYPE$CASE
+FLAMEBASENAME='flames/mixed_poisson/pplus1pow3/'$TRAFOTYPE$CASE
 
 if $DORES
 then
@@ -60,6 +58,10 @@ then
             do
                 for C in "${CELLSPD[@]}"
                 do
+                    FLAMENAME=$FLAMEBASENAME"order_"$P"/cells_"$C"/"
+                    NAME=$BASENAME"order_"$P"/cells_"$C"/"
+                    mkdir -p $FLAMENAME
+                    mkdir -p $NAME
                     if ! $FLAME
                     then 
                         FLARG=''
