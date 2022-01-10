@@ -160,6 +160,10 @@ git commit -m "New script to fetch flamegraphs was generated."
 CURRENT_BRANCH=$(git branch --show-current)
 git push origin $CURRENT_BRANCH
 
+# Keep track of the sh file
+SCRIPT="run_profiler.sh"
+cp $SCRIPT "$BASENAME"$SCRIPT
+
 # Move results over into report directory and push online
 PATH_TO_REPORT='../../../mathybperf_report/61dc091dbf10034613ed0daa/'
 find ./results -type f | grep -i setup.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
