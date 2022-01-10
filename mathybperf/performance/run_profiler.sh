@@ -159,3 +159,15 @@ git add $FLAMENAME"curlthesvgs.sh"
 git commit -m "New script to fetch flamegraphs was generated."
 CURRENT_BRANCH=$(git branch --show-current)
 git push origin $CURRENT_BRANCH
+
+# Move results over into report directory and push online
+PATH_TO_REPORT='../../../mathybperf_report/61dc091dbf10034613ed0daa/'
+find ./results -type f | grep -i setup.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
+find ./results -type f | grep -i log.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
+find ./flames -type f | grep -i linkstosvgs.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
+find ./results -type f | grep -i setup.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {} 
+find ./results -type f | grep -i log.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {} 
+find ./flames -type f | grep -i linkstosvgs.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {}
+git -C $PATH_TO_REPORT commit -m "New results"
+git -C $PATH_TO_REPORT pull origin master
+git -C $PATH_TO_REPORT push origin master
