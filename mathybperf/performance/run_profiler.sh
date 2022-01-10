@@ -24,7 +24,7 @@ else
 fi
 
 # setup
-ORDERS=(0)
+ORDERS=(0 1 2)
 LEVELS=2
 SCALING=(1)
 DEFORM=(0)
@@ -52,13 +52,13 @@ mkdir -p $FLAMENAME
 if $DORES
 then
     # file name is parameter set name
-    for D in $DEFORM
+    for D in "${DEFORM[@]}"
     do
-        for S in $SCALING
+        for S in "${SCALING[@]}"
         do
-            for P in $ORDERS
+            for P in "${ORDERS[@]}"
             do
-                for C in $CELLSPD
+                for C in "${CELLSPD[@]}"
                 do
                     if ! $FLAME
                     then 
