@@ -32,7 +32,7 @@ CELLSPD=(3)
 QUADS=true
 FLAME=true
 PERFORMP='perform_params'
-BASEP='baseline_params'
+BASEP='jacks_baseline_params'
 
 # setup output folder name
 # first choose a case name
