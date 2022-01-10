@@ -47,6 +47,7 @@ def fetch_info():
     parser.add_argument('-log_view', type=str,
                         help="""Flamegraph?""")
     parser.add_argument('--clean', action="store_true", help='Clean firdrake caches?')
+    parser.add_argument('--projectexactsol', type=bool,  help='Should the exact solution on the trace be projected so that we know the error?')
     parser.add_argument('--verification', action="store_true",  help='Should errors on results be checked?')
 
     return parser.parse_args()
@@ -79,7 +80,9 @@ if "log_view" not in OptionsManager.commandline_options:
 # get internal time data of solvers
 # warm up solver
 with PETSc.Log.Stage("stage"):
-    quad_degree, (w, w2), (w_t, w_t_exact), mesh = problem(problem_bag, solver_bag, verification=args.verification)
+    quad_degree, (w, w2), (w_t, w_t_exact), mesh = problem(problem_bag, solver_bag,
+                                                           verification=args.verification,
+                                                           project=args.projectexactsol)
     internal_timedata_cold = time_data.get_internal_timedata(warmup, mesh.comm)
 tas_data.update(internal_timedata_cold)
 

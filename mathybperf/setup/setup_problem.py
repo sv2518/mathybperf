@@ -7,7 +7,7 @@ from mathybperf.verification.geometric import check_facetarea_and_cellvolume
 from firedrake import *
 import ufl
 
-def problem(problem_bag, solver_bag, verification, new=True):
+def problem(problem_bag, solver_bag, verification, new=True, project=False):
     reset = not problem_bag.mesh or new  # setup new problem
     if reset:
         problem_bag.mesh = mesh_3D(problem_bag, solver_bag.levels)
@@ -25,7 +25,15 @@ def problem(problem_bag, solver_bag, verification, new=True):
     # solve problem
     a, L, quadrature_degree = problem_bag.var_problem
     w, solver = solve_with_params(problem_bag, solver_bag)
-    w2 = None
+
+    # compare iterative solution to reference solution
+    w2 = Function(problem_bag.space[0])
+    w_t = solver.snes.ksp.pc.getPythonContext().trace_solution
+    w_t_exact = Function(w_t.function_space())
+    if project:
+        w2.sub(0).project(ufl.grad(exact_sol))
+        w2.sub(1).project(exact_sol)
+        w_t_exact = project_trace_solution(w_t.function_space(), exact_sol)
 
     # verification of error
     if verification:
@@ -35,15 +43,6 @@ def problem(problem_bag, solver_bag, verification, new=True):
 
         # plug iterative solution in the variational problem
         check_var_problem(a, L, w)
-    
-        # compare iterative solution to reference solution
-        w2 = Function(problem_bag.space[0])
-        w2.sub(0).project(ufl.grad(exact_sol))
-        w2.sub(1).project(exact_sol)
-
-        # get error for trace solution too
-        w_t = solver.snes.ksp.pc.getPythonContext().trace_solution
-        w_t_exact = project_trace_solution(w_t.function_space(), exact_sol)
 
         # double check that the reference solution is solving the variational problem
         check_var_problem(a, L, w2.sub(1))
