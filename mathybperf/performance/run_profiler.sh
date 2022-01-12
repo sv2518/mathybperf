@@ -42,6 +42,7 @@ FLAMEBASENAME='flames/mixed_poisson/pplus1pow3/'$TRAFOTYPE$CASE
 LINKS=""
 CURLS=""
 WEBPAGE="https://raw.githubusercontent.com/sv2518/mathybperf/main/mathybperf/performance/"
+CURRENT_BRANCH=$(git branch --show-current)
 
 alias urlencode='python3 -c "import sys, urllib.parse as ul; print(ul.quote_plus(sys.argv[1]))"'
 if $DORES
@@ -78,7 +79,7 @@ then
                     then
                         FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
                     fi
-                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --clean --projectexactsol $PROJECTEXACTSOL > $NNAME"_log.txt"
+                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --clean  $PROJECTEXACTSOL > $NNAME"_log.txt"
                     if $FLAME
                     then
                     ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
@@ -104,7 +105,7 @@ then
                     then
                         FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
                     fi
-                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --projectexactsol $PROJECTEXACTSOL > $NNAME"_log.txt"
+                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" $PROJECTEXACTSOL > $NNAME"_log.txt"
                     if $FLAME
                     then
                     ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
@@ -133,7 +134,7 @@ then
                     then
                         FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
                     fi
-                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --clean --projectexactsol $PROJECTEXACTSOL > $NNAME"_log.txt"
+                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --clean $PROJECTEXACTSOL > $NNAME"_log.txt"
                     if $FLAME
                     then
                     ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
@@ -159,7 +160,7 @@ then
                     then
                         FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
                     fi
-                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --projectexactsol $PROJECTEXACTSOL > $NNAME"_log.txt"
+                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" $PROJECTEXACTSOL > $NNAME"_log.txt"
                     if $FLAME
                     then
                     ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
@@ -179,11 +180,6 @@ then
             done
         done
     done
-    # Make new flamegraphs online accessible
-    git add $FLAMENAME*"_flame.svg"
-    git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
-    CURRENT_BRANCH=$(git branch --show-current)
-    git push origin $CURRENT_BRANCH
 fi
 
 # Save the links to the svgs in a file for easy access from the report

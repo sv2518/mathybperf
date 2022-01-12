@@ -44,7 +44,7 @@ def fetch_info():
                                 Can be quadratic or exponential at the moment.""")
     parser.add_argument('--add_to_quad_degree', type=int, nargs="+", default=[0,0],
                         help='In- or decrease the quadrature degree by a tuple.')
-    parser.add_argument('--projectexactsol', type=bool,
+    parser.add_argument('--projectexactsol',  action="store_true",
                         help='Should the exact solution on the trace be projected so that we know the error?')
     parser.add_argument('-log_view', type=str,
                         help="""Flamegraph?""")
