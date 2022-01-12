@@ -8,8 +8,9 @@ cd /Users/sv2518/firedrakeexamples/mathybperf/mathybperf/performance
 # mode of the script, options are:
 # do we want to generate a tex from this?
 # do we want to generate new results?
-ARG1="$1"
-ARG2="$2"
+ARG0="$1"
+ARG1="$2"
+ARG2="$3"
 if [[ "$ARG1" == "--nores" || "$ARG2" == "--nores" ]]
 then
     DORES=false
@@ -23,20 +24,13 @@ else
     DOTEX=false
 fi
 
-# setup
-ORDERS=(0 1 2)
-LEVELS=2
-SCALING=(1)
-DEFORM=(0)
-TRAFO='none' # 'affine'
-ATQD=(0 0)
-CELLSPD=(3)
-QUADS=true
-FLAME=true
-PERFORMP='perform_params'
-BASEP='jacks_baseline_params'
-SOLTYPE='quadratic'
-PROJECTEXACTSOL=false
+# setup (MAKE YOUR CHANGES HERE
+current_case="$ARG0"
+my_dir="$(dirname "$0")"
+echo $my_dir
+pwd
+. $my_dir/setups/$current_case.sh
+echo $CASE
 
 # setup output folder name
 # first choose a case name
