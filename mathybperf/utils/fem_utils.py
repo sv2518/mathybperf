@@ -1,4 +1,5 @@
 from firedrake import *
+import pandas as pd
 
 
 def est_degree_calculation(form):
@@ -34,6 +35,7 @@ class ProblemBag(object):
         self.var_problem = None
         self.var_problem_repr = ""
         self.var_problem_info = {}
+        self.total_local_shape=None
     
     def __str__(self):
         return (

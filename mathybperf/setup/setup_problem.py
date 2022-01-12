@@ -28,6 +28,7 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
 
     # compare iterative solution to reference solution
     w_t = solver.snes.ksp.pc.getPythonContext().trace_solution
+    problem_bag.total_local_shape=solver.snes.ksp.pc.getPythonContext().schur_builder.total_local_shape
     w_t_exact = None
     w2 = None
     if project:
