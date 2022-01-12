@@ -97,19 +97,25 @@ tas_data.update(vars(args))
 
 # gather dofs
 size_data = SizeData(w).get_split_data()
+data_to_tex = size_data
 tas_data.update(size_data)
 
 # gather errors
-accuracy_data = get_errors(w, w2)
-tas_data.update(accuracy_data)
+if args.projectexactsol:
+    accuracy_data = get_errors(w, w2)
+    tas_data.update(accuracy_data)
+    data_to_tex.update(accuracy_data)
 
 # gather dofs for trace
 size_data = SizeData(w_t).get_data()
 tas_data.update(size_data)
+data_to_tex.update(size_data)
 
 # errors for trace
-accuracy_data = get_error(w_t, w_t_exact)
-tas_data.update(accuracy_data)
+if args.projectexactsol:
+    accuracy_data = get_error(w_t, w_t_exact)
+    tas_data.update(accuracy_data)
+    data_to_tex.update(accuracy_data)
 
 # write out data to .csv
 datafile = pd.DataFrame(tas_data)
@@ -125,3 +131,8 @@ with open(paramsfilename, 'w') as convert_file:
 setup_filename = args.name + '_setup.txt'
 with open(setup_filename, 'w') as convert_file:
      convert_file.write(str(problem_bag))
+
+# also save latex table for size data separate
+size_table_filename = args.name + '_extradata.tex'
+with open(size_table_filename, 'w') as convert_file:
+    convert_file.write(pd.DataFrame(data_to_tex, index=[0]).to_latex())
