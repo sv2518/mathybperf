@@ -211,15 +211,19 @@ firedrake-status > ./firedrakestatus.txt
 
 # Move results over into report directory and push online
 PATH_TO_REPORT='../../../mathybperf_report/61dc091dbf10034613ed0daa/'
-find ./$FOLDER -type f | grep -i setup.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
+find ./$FOLDER -type f | grep -i setup.tex$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
 find ./$FOLDER -type f | grep -i log.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
 find ./$FOLDER -type f | grep -i parameters.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
 find ./$FOLDER -type f | grep -i extradata.tex$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
+find ./ -type f | grep -i systeminfo.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
+find ./ -type f | grep -i firedrakestatus.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
 find ./ -type f | grep -i linkstosvgs.tex$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
-find ./$FOLDER -type f | grep -i setup.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {} 
+find ./$FOLDER -type f | grep -i setup.tex$ | xargs -I{} git -C $PATH_TO_REPORT add {} 
 find ./$FOLDER -type f | grep -i log.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {} 
 find ./$FOLDER -type f | grep -i parameters.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {}
-find ./$FOLDER -type f | grep -i extradata.tex$ | xargs -I{} git -C $PATH_TO_REPORT add {} 
+find ./$FOLDER -type f | grep -i extradata.tex$ | xargs -I{} git -C $PATH_TO_REPORT add {}
+find ./ -type f | grep -i systeminfo.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {}
+find ./ -type f | grep -i firedrakestatus.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {}
 find ./ -type f | grep -i linkstosvgs.tex$ | xargs -I{} git -C $PATH_TO_REPORT add {}
 git -C $PATH_TO_REPORT commit -m "New results"
 git -C $PATH_TO_REPORT pull origin master
