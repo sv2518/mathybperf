@@ -133,4 +133,4 @@ with open(setup_filename, 'w') as convert_file:
 # also save latex table for size data separate
 size_table_filename = args.name + '_extradata.tex'
 with open(size_table_filename, 'w') as convert_file:
-    convert_file.write(pd.DataFrame(data_to_tex, index=[0]).to_latex())
+    convert_file.write(pd.DataFrame(data_to_tex, index=[0]).to_latex(index=False))
