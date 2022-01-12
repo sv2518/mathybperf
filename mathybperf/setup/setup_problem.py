@@ -27,10 +27,11 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
     w, solver = solve_with_params(problem_bag, solver_bag)
 
     # compare iterative solution to reference solution
-    w2 = Function(problem_bag.space[0])
     w_t = solver.snes.ksp.pc.getPythonContext().trace_solution
-    w_t_exact = Function(w_t.function_space())
+    w_t_exact = None
+    w2 = None
     if project:
+        w2 = Function(problem_bag.space[0])
         w2.sub(0).project(ufl.grad(exact_sol))
         w2.sub(1).project(exact_sol)
         w_t_exact = project_trace_solution(w_t.function_space(), exact_sol)
@@ -50,4 +51,4 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
         # compare iterative to reference solution
         check_error(w, w2)
 
-    return quadrature_degree, (w, w2,), (w_t, w_t_exact), solver_bag.mesh
+    return quadrature_degree, (w, w2), (w_t, w_t_exact), solver_bag.mesh
