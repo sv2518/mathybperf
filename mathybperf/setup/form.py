@@ -8,16 +8,21 @@ def mixed_poisson(W, add_to_quad_degree, exact):
 
     form = (dot(sigma, tau) + div(tau)*u + div(sigma)*v)
 
-    # estimate the quadrature degree
-    # and give user the freedom to increase/decrease the estimated degree
-    est = enumerate(est_degree_calculation(form))
-    quadrature_degree = tuple([d+add_to_quad_degree[c] for c, d in est])
+    if all(degree == 0 for degree in add_to_quad_degree):
+        int_domain = dx
+        quadrature_degree = None
+    else:
+        # estimate the quadrature degree
+        # and give user the freedom to increase/decrease the estimated degree
+        est = enumerate(est_degree_calculation(form))
+        quadrature_degree = tuple([d+add_to_quad_degree[c] for c, d in est])
+        int_domain = dx(degree=quadrature_degree)
 
     # Method of manufactured solution: build rhs from exact solution
     f = -div(grad(exact))
-
-    a = form*dx(degree=quadrature_degree)
-    L = -f*v*dx(degree=quadrature_degree)
+    a = form*int_domain
+    l = -f*v
+    L = l*int_domain
     repr = (
             f"\nVARIATIONAL PROBLEM\n"
             f"Trial functions: {sigma} and {u}\n"
