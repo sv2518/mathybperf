@@ -74,6 +74,9 @@ then
                     firedrake-clean
                     NNAME+='_warm_up'
                     FNAME+='_warm_up'
+                    reftochap='\\caseRT'$((P+1))"DG"$P
+                    LINKS=$LINKS"Extra info for following runs see \hyperref[setup"$reftochap"]{setup"$reftochap"} and \hyperref[solverbase"$reftochap"]{solverbase"$reftochap"}\n\n"
+                    
                     LINKS=$LINKS"Baseline warmup run\n"
                     if $FLAME
                     then
@@ -119,7 +122,7 @@ then
                     long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
                     encode_long_url=$(urlencode $long_url)
                     short_url=$(curl -s "http://tinyurl.com/api-create.php?url=${encode_long_url}")
-                    LINKS=$LINKS"\url{$short_url}\n\n"
+                    LINKS=$LINKS"\url{$short_url}"'\\\\\n\n'
                     CURLS=$CURLS"curl "$WEBPAGE$FNAME"_flame.svg>"$FNAME"_flame.svg\n"
 
                     # run perf case
@@ -129,6 +132,8 @@ then
                     firedrake-clean
                     NNAME+='_warm_up'
                     FNAME+='_warm_up'
+                    reftochap='\\caseRT'$((P+1))"DG"$P
+                    LINKS=$LINKS"Extra info for following runs see \hyperref[setup$reftochap]{setup$reftochap} and \hyperref[solverperf"$reftochap"]{solverperf"$reftochap"}\n\n"
                     LINKS=$LINKS"Performance warmup run\n"
                     if $FLAME
                     then
