@@ -26,4 +26,9 @@ def mixed_poisson(W, add_to_quad_degree, exact):
             f"Rhs: {L}\n"
             f"Quadrature degree: {quadrature_degree}\n"
            )
-    return (a, L, quadrature_degree), repr
+    var_problem_info = {"Trial functions": f"{TrialFunction(W)}",
+                        "Test functions": f"{TestFunction(W)}",
+                        "Lhs": f"{form}",
+                        "Rhs": f"{l}",
+                        "Domain": f"{int_domain}"}
+    return (a, L, quadrature_degree), repr, var_problem_info

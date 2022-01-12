@@ -18,7 +18,7 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
 
     if reset:
         problem_bag.space = RT_DQ_3D(problem_bag.order, problem_bag.mesh)
-        problem_bag.var_problem, problem_bag.var_problem_repr = mixed_poisson(problem_bag.space[0],
+        problem_bag.var_problem, problem_bag.var_problem_repr, problem_bag.var_problem_info = mixed_poisson(problem_bag.space[0],
                                                                               problem_bag.add_to_quad_degree,
                                                                               exact_sol)
     

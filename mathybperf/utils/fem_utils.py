@@ -33,6 +33,7 @@ class ProblemBag(object):
         self.space = None
         self.var_problem = None
         self.var_problem_repr = ""
+        self.var_problem_info = {}
     
     def __str__(self):
         return (
@@ -46,3 +47,30 @@ class ProblemBag(object):
                 f"Change to quadrature degree: {self.add_to_quad_degree}\n"
                 f"Type of the exact solution (and rhs): {self.exact_sol_type}\n"
                ) + self.var_problem_repr
+
+    def latex(self):
+        data = {"Approximation order": f"{self.order}",
+                "Cells per dimension": f"{self.cells_per_dim}",
+                "Deformation": f"{self.deformation}",
+                "Cell scaling": f"{self.scaling}",
+                "Cell deformation transformation": f"{self.affine_trafo}",
+                "Quadrilateral cells?": f"{self.quadrilateral}",
+                "Change to quadrature degree": f"{self.add_to_quad_degree}",
+                "Type of the exact solution (and rhs)": f"{self.exact_sol_type}"}
+        data.update(self.var_problem_info)
+        data["Domain"] = data["Domain"].replace("_", "\_")
+        pd.set_option('display.max_colwidth', None)
+        data["Lhs"] = data["Lhs"].replace("[v_0[0], v_0[1], v_0[2]]", "v_0")
+        data["Lhs"] = data["Lhs"].replace("[v_1[0], v_1[1], v_1[2]]", "v_1")
+        data["Lhs"] = data["Lhs"].replace("div", "\Delta")
+        data["Lhs"] = data["Lhs"].replace("grad", "\nabla")
+        data["Lhs"] = data["Lhs"].replace("*", "\cdot")
+        data["Lhs"] = data["Lhs"].replace(".", "\cdot")
+        data["Lhs"] = "$"+data["Lhs"]+"$"
+        data["Rhs"] = data["Rhs"].replace("+ -1 *", "-")
+        data["Rhs"] = data["Rhs"].replace("div", "\Delta")
+        data["Rhs"] = data["Rhs"].replace("grad", "\nabla")
+        data["Lhs"] = data["Lhs"].replace("*", "\cdot")
+        data["Lhs"] = data["Lhs"].replace(".", "\cdot")
+        data["Rhs"] = "$"+data["Rhs"]+"$"
+        return pd.DataFrame(data, index=[0]).T.to_latex(header=None, escape=False)

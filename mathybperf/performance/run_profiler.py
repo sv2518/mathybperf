@@ -125,10 +125,10 @@ paramsfilename = args.name + '_parameters.txt'
 with open(paramsfilename, 'w') as convert_file:
     convert_file.write(json.dumps(perform_params, indent=4))
 
-# also remember which parameter sets we used for the solver
-setup_filename = args.name + '_setup.txt'
+# also save latex table for setup data separate
+setup_filename = args.name + '_setup.tex'
 with open(setup_filename, 'w') as convert_file:
-     convert_file.write(str(problem_bag))
+    convert_file.write(problem_bag.latex())
 
 # also save latex table for size data separate
 size_table_filename = args.name + '_extradata.tex'
