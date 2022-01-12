@@ -205,6 +205,10 @@ git push origin $CURRENT_BRANCH
 SCRIPT="run_profiler.sh"
 cp $SCRIPT $BASENAME"backup_of_"$SCRIPT
 
+# System and Firedrake information
+system_profiler -detailLevel mini SPSoftwareDataType SPHardwareDataType > ./systeminfo.txt
+firedrake-status > ./firedrakestatus.txt
+
 # Move results over into report directory and push online
 PATH_TO_REPORT='../../../mathybperf_report/61dc091dbf10034613ed0daa/'
 find ./$FOLDER -type f | grep -i setup.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
