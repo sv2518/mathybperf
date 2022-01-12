@@ -80,4 +80,4 @@ class SizeData(object):
     
     def get_data(self):
         dofs = self.solution.dof_dset.layout_vec.getSize()
-        return {"trace dofs": dofs}
+        return {"trace dofs (part of velo dofs)": dofs}
