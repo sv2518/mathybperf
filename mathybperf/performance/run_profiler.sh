@@ -34,7 +34,6 @@ echo $CASE
 
 # setup output folder name
 # first choose a case name
-CASE='/case1/'
 FOLDER='results/mixed_poisson/'
 FOLDER+='pplus1pow3/'  # penalty set permanently to this
 TRAFOTYPE='trafo_'$TRAFO
