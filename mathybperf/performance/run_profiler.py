@@ -93,10 +93,11 @@ tas_data.update(external_timedata)
 # add further information
 # setup information
 tas_data.update(vars(args))
+data_to_tex={"Local tensor shape": str(problem_bag.total_local_shape)}
 
 # gather dofs
 size_data = SizeData(w).get_split_data()
-data_to_tex = size_data
+data_to_tex.update(size_data)
 tas_data.update(size_data)
 
 # gather errors
