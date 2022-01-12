@@ -123,7 +123,7 @@ datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="
 # also remember which parameter sets we used for the solver
 paramsfilename = args.name + '_parameters.txt'
 with open(paramsfilename, 'w') as convert_file:
-     convert_file.write(json.dumps(perform_params, indent=4))
+    convert_file.write(json.dumps(perform_params, indent=4))
 
 # also remember which parameter sets we used for the solver
 setup_filename = args.name + '_setup.txt'
