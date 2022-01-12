@@ -39,7 +39,11 @@ FOLDER+='pplus1pow3/'  # penalty set permanently to this
 TRAFOTYPE='trafo_'$TRAFO
 BASENAME=$FOLDER$TRAFOTYPE$CASE
 FLAMEBASENAME='flames/mixed_poisson/pplus1pow3/'$TRAFOTYPE$CASE
+LINKS=""
+CURLS=""
+WEBPAGE="https://raw.githubusercontent.com/sv2518/mathybperf/main/mathybperf/performance/"
 
+alias urlencode='python3 -c "import sys, urllib.parse as ul; print(ul.quote_plus(sys.argv[1]))"'
 if $DORES
 then
     # file name is parameter set name
@@ -55,6 +59,8 @@ then
                     NAME=$BASENAME"order_"$P"/cells_"$C"/"
                     mkdir -p $FLAMENAME
                     mkdir -p $NAME
+                    CURLS=$CURLS"mkdir -p "$FLAMENAME"\n"
+                    LINKS=$LINKS'\n\nLinks for flames of RT$_{p+1}$-DG$_{p}$ with $p='$P'$ and base mesh $'$C'\\times'$C'\\times'$C'$ refined on '$LEVELS' levels\\\\ \n\n'
                     if ! $FLAME
                     then 
                         FLARG=''
@@ -67,6 +73,7 @@ then
                     firedrake-clean
                     NNAME+='_warm_up'
                     FNAME+='_warm_up'
+                    LINKS=$LINKS"Baseline warmup run\n"
                     if $FLAME
                     then
                         FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
@@ -76,11 +83,23 @@ then
                     then
                     ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
                     fi
+                    # Make new flamegraphs online accessible
+                    git add $FLAMENAME*"_flame.svg"
+                    git add -f $FLAMENAME*"_flame.txt"
+                    git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
+                    git push origin $CURRENT_BRANCH
+                    # Generate data for links
+                    long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
+                    encode_long_url=$(urlencode $long_url)
+                    short_url=$(curl -s "http://tinyurl.com/api-create.php?url=${encode_long_url}")
+                    LINKS=$LINKS"\url{$short_url}\n\n"
+                    CURLS=$CURLS"curl "$WEBPAGE$FNAME"_flame.svg>"$FNAME"_flame.svg\n"
 
                     NNAME=$NAME$PARAMS
                     FNAME=$FLAMENAME$PARAMS
                     NNAME+='_warmed_up'
                     FNAME+='_warmed_up'
+                    LINKS=$LINKS"Baseline warmed up run\n"
                     if $FLAME
                     then
                         FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
@@ -90,6 +109,17 @@ then
                     then
                     ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
                     fi
+                    # Make new flamegraphs online accessible
+                    git add $FLAMENAME*"_flame.svg"
+                    git add -f $FLAMENAME*"_flame.txt"
+                    git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
+                    git push origin $CURRENT_BRANCH
+                    # Generate data for links
+                    long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
+                    encode_long_url=$(urlencode $long_url)
+                    short_url=$(curl -s "http://tinyurl.com/api-create.php?url=${encode_long_url}")
+                    LINKS=$LINKS"\url{$short_url}\n\n"
+                    CURLS=$CURLS"curl "$WEBPAGE$FNAME"_flame.svg>"$FNAME"_flame.svg\n"
 
                     # run perf case
                     PARAMS=$PERFORMP
@@ -98,6 +128,7 @@ then
                     firedrake-clean
                     NNAME+='_warm_up'
                     FNAME+='_warm_up'
+                    LINKS=$LINKS"Performance warmup run\n"
                     if $FLAME
                     then
                         FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
@@ -107,11 +138,23 @@ then
                     then
                     ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
                     fi
+                    # Make new flamegraphs online accessible
+                    git add $FLAMENAME*"_flame.svg"
+                    git add -f $FLAMENAME*"_flame.txt"
+                    git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
+                    git push origin $CURRENT_BRANCH
+                    # Generate data for links
+                    long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
+                    encode_long_url=$(urlencode $long_url)
+                    short_url=$(curl -s "http://tinyurl.com/api-create.php?url=${encode_long_url}")
+                    LINKS=$LINKS"\url{$short_url}\n\n"
+                    CURLS=$CURLS"curl "$WEBPAGE$FNAME"_flame.svg>"$FNAME"_flame.svg\n"
 
                     NNAME=$NAME$PARAMS
                     FNAME=$FLAMENAME$PARAMS
                     NNAME+='_warmed_up'
                     FNAME+='_warmed_up'
+                    LINKS=$LINKS"Performance warmed up run\n"
                     if $FLAME
                     then
                         FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
@@ -121,6 +164,17 @@ then
                     then
                     ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
                     fi
+                    # Make new flamegraphs online accessible
+                    git add $FLAMENAME*"_flame.svg"
+                    git add -f $FLAMENAME*"_flame.txt"
+                    git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
+                    git push origin $CURRENT_BRANCH
+                    # Generate data for links
+                    long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
+                    encode_long_url=$(urlencode $long_url)
+                    short_url=$(curl -s "http://tinyurl.com/api-create.php?url=${encode_long_url}")
+                    LINKS=$LINKS'\url{'$short_url'}\\\\\n'
+                    CURLS=$CURLS"curl "$WEBPAGE$FNAME"_flame.svg>"$FNAME"_flame.svg\n"
                 done
             done
         done
@@ -134,23 +188,13 @@ fi
 
 # Save the links to the svgs in a file for easy access from the report
 # but a note that explain how to fetch this automatically to a local repo
-# FIXME links don't work because I changed the repo structure
-WEBPAGE="https://raw.githubusercontent.com/sv2518/mathybperf/main/mathybperf/performance/"$BASEFLAMENAME
-WEBPAGE1="\url{"$WEBPAGE$BASEP"_warm_up_flame.svg}"
-WEBPAGE2="\url{"$WEBPAGE$BASEP"_warmed_up_flame.svg}"
-WEBPAGE3="\url{"$WEBPAGE$PERFORMP"warm_up_flame.svg}"
-WEBPAGE4="\url{"$WEBPAGE$PERFORMP"warmed_up_flame.svg}"
-NOTE="\nEasier way is to run curl -OL "$WEBPAGE"curlthesvgs.sh\n and sh ./curlthesvgs.sh."
+NOTE="\nIf you want the flamegraphs locally as svgs just run\n\ncurl -OL "$WEBPAGE$BASEFLAMENAME"curlthesvgs.sh\n\n and then\n\nsh ./curlthesvgs.sh."
 touch $BASEFLAMENAME"linkstosvgs.tex"
-echo $WEBPAGE1"\n"$WEBPAGE2"\n"$WEBPAGE3"\n"$WEBPAGE4"\n"$NOTE > $BASEFLAMENAME"linkstosvgs.tex"
+echo $LINKS"\n"$NOTE > $BASEFLAMENAME"linkstosvgs.tex"
 
 # Generate and publish script to fetch the svg files
-CWEBPAGE1="curl "$WEBPAGE$BASEP"_warm_up_flame.svg>"$BASEFLAMENAME$BASEP"_warm_up_flame.svg"
-CWEBPAGE2="curl "$WEBPAGE$BASEP"_warmed_up_flame.svg>"$BASEFLAMENAME$BASEP"_warmed_up_flame.svg"
-CWEBPAGE3="curl "$WEBPAGE$PERFORMP"_warm_up_flame.svg>"$BASEFLAMENAME$PERFORMP"_warm_up_flame.svg"
-CWEBPAGE4="curl "$WEBPAGE$PERFORMP"_warmed_up_flame.svg>"$BASEFLAMENAME$PERFORMP"_warmed_up_flame.svg"
 touch $BASEFLAMENAME"curlthesvgs.sh"
-echo "#!/bin/sh\nmkdir -p ./svgs/"$BASEFLAMENAME"\ncd svgs\n"$CWEBPAGE1"\n"$CWEBPAGE2"\n"$CWEBPAGE3"\n"$CWEBPAGE4"\n" > $BASEFLAMENAME"curlthesvgs.sh"
+echo "#!/bin/sh\nmkdir -p ./svgs/"$BASEFLAMENAME"\ncd svgs\n"$CURLS"\n" > $BASEFLAMENAME"curlthesvgs.sh"
 git add $BASEFLAMENAME"curlthesvgs.sh"
 git commit -m "New script to fetch flamegraphs was generated."
 CURRENT_BRANCH=$(git branch --show-current)
