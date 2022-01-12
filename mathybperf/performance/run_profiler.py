@@ -63,7 +63,6 @@ args.add_to_quad_degree = tuple(args.add_to_quad_degree)
 importlib.import_module("mathybperf.setup.parameters")
 parameters = globals()[args.parameters]
 PETSc.Sys.Print("with params: ", args.parameters+"\n")
-PETSc.Sys.Print("defined as: ", str(parameters)+"\n")
 
 
 # problem setup
@@ -79,8 +78,8 @@ if "log_view" not in OptionsManager.commandline_options:
     PETSc.Log.begin()
 
 # get internal time data of solvers
-# warm up solver
-with PETSc.Log.Stage("stage"):
+petsc_stage_name = "stage"
+with PETSc.Log.Stage(petsc_stage_name):
     quad_degree, (w, w2), (w_t, w_t_exact), mesh = problem(problem_bag, solver_bag,
                                                            verification=args.verification,
                                                            project=args.projectexactsol)
@@ -88,7 +87,7 @@ with PETSc.Log.Stage("stage"):
 tas_data.update(internal_timedata_cold)
 
 # add general times spend on different parts
-external_timedata = time_data.get_external_timedata("update solve")
+external_timedata = time_data.get_external_timedata(petsc_stage_name)
 tas_data.update(external_timedata)
 
 # add further information
@@ -120,12 +119,11 @@ if args.projectexactsol:
 # write out data to .csv
 datafile = pd.DataFrame(tas_data)
 datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="w",header=True)
-PETSc.Sys.Print("\nSaved information are:", str(tas_data))
 
 # also remember which parameter sets we used for the solver
-paramsfilename = args.name + "_" + args.parameters + '_parameters.txt'
+paramsfilename = args.name + '_parameters.txt'
 with open(paramsfilename, 'w') as convert_file:
-     convert_file.write(json.dumps(perform_params))
+     convert_file.write(json.dumps(perform_params, indent=4))
 
 # also remember which parameter sets we used for the solver
 setup_filename = args.name + '_setup.txt'
