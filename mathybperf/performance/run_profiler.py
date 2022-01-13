@@ -67,7 +67,7 @@ PETSc.Sys.Print("with params: ", args.parameters+"\n")
 
 # problem setup
 tas_data = {}
-solver_bag = SolverBag(perform_params, baseline_params, args.gtmg_levels)
+solver_bag = SolverBag(parameters, None, args.gtmg_levels)
 problem_bag = ProblemBag(args.deform, args.scaling, args.trafo, args.quadrilateral,
                          args.p, args.add_to_quad_degree, penalty, args.c, args.exact_sol_type)
 time_data = TimeData()
@@ -124,7 +124,7 @@ datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="
 # also remember which parameter sets we used for the solver
 paramsfilename = args.name + '_parameters.txt'
 with open(paramsfilename, 'w') as convert_file:
-    convert_file.write(json.dumps(perform_params, indent=4))
+    convert_file.write(json.dumps(parameters, indent=4))
 
 # also save latex table for setup data separate
 setup_filename = args.name + '_setup.tex'
