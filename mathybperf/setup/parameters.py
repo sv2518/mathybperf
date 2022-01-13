@@ -397,8 +397,10 @@ lumatfree = {"ksp_type": "preonly",
             "assembled_pc_type": "lu"}
 
 
-# setup test
+# Parameters used in the cases of my setups
+# 1) HELPER DICTs
 
+# MG params
 mgmatfree = {"snes_type": "ksponly",
             "ksp_type": "preonly",
             "mat_type": "matfree",
@@ -413,84 +415,126 @@ mgmatfree = {"snes_type": "ksponly",
             "mg_levels_ksp_type": "chebyshev",
             "mg_levels_ksp_max_it": 3,
             "mg_levels_pc_type": "none"}
-gt_levels_cheby = {"ksp_type": "chebyshev",
+mgmatexp = {'ksp_type': 'preonly',
+            'pc_type': 'mg',
+            'pc_mg_type': 'full',
+            'mg_levels': {'ksp_type': 'chebyshev',
+                          'pc_type': 'jacobi',
+                          'ksp_max_it': 3}}
+
+# Params for solves on levels
+cheby_jacobi = {"ksp_type": "chebyshev",
+                          "ksp_max_it": 3,
+                          "pc_type": "none"}
+cheby_none = {"ksp_type": "chebyshev",
                     "ksp_max_it": 3,
-                    "pc_type": "none"
-                    }
-gt_params_nested = {"mg_coarse": mgmatfree,
-                    "mg_levels": gt_levels_cheby,
-                    'mat_type': 'matfree'}
-perform_params = {'snes_type': 'ksponly',
-                  'mat_type': 'matfree',
-                  'ksp_type': 'preonly',
-                  'pc_type': 'python',
-                  'pc_python_type': 'firedrake.HybridizationPC',
-                  'hybridization': {'ksp_type': 'cg',
+                    "pc_type": "jacobi"}
+
+# Params for GTMG
+gt_params_matexp = {'mg_levels': cheby_jacobi,
+                    'mg_coarse': mgmatexp}
+gt_params_global_matfree = {"mg_coarse": mgmatfree,
+                            "mg_levels": cheby_jacobi,
+                            'mat_type': 'matfree'}
+gt_params_fully_matfree = {"mg_coarse": mgmatfree,
+                           "mg_levels": cheby_none,
+                           'mat_type': 'matfree'}
+
+# 2) FULL PARAMS
+# Matrix explicit, direct hybridization
+hybridization_lu_params = {'mat_type': 'matfree',
+                           'ksp_type': 'preonly',
+                           'pc_type': 'python',
+                           'pc_python_type': 'firedrake.HybridizationPC',
+                           'hybridization': {'ksp_type': 'preonly',
+                                             'pc_type': 'lu',
+                                             'ksp_rtol': 1.e-16}}
+
+# Hyridization, globally matfree with CG, used in Thomas' matrix-free hybridization test
+hybridization_global_matfree_cg =  {'mat_type': 'matfree',
+                                    'ksp_type': 'preonly',
                                     'pc_type': 'python',
-                                    'mat_type': 'matfree',
-                                    'pc_python_type': 'firedrake.GTMGPC',
-                                    'gt': gt_params_nested,
-                                    'ksp_view': None
-                                    }}
-perform_params_local_mat = {'snes_type': 'ksponly',
-                  'mat_type': 'matfree',
-                  'ksp_type': 'preonly',
-                  'pc_type': 'python',
-                  'pc_python_type': 'firedrake.HybridizationPC',
-                  'hybridization': {'ksp_type': 'cg',
+                                    'pc_python_type': 'firedrake.HybridizationPC',
+                                    'hybridization': {'ksp_type': 'cg',
+                                                     'pc_type': 'none',
+                                                     'ksp_rtol': 1e-8,
+                                                     'mat_type': 'matfree'}}
+
+# These are the tests used for Jacks GTMG test in the Firedrake test suite
+gtmg_matexpl_params =  {'mat_type': 'matfree',
+                        'ksp_type': 'preonly',
+                        'pc_type': 'python',
+                        'pc_python_type': 'firedrake.HybridizationPC',
+                        'hybridization': {'ksp_type': 'cg',
+                                          'pc_type': 'python',
+                                          'pc_python_type': 'firedrake.GTMGPC',
+                                          'gt': {'mg_levels': cheby_jacobi,
+                                                 'mg_coarse': mgmatexp},
+                                          'ksp_view': None}}
+
+# These are the tests used for Jacks GTMG test in the Firedrake test suite
+# but the Schur complement in the trace solve is nested
+gtmg_matexpl_nested_schur_params = {'mat_type': 'matfree',
+                                    'ksp_type': 'preonly',
                                     'pc_type': 'python',
-                                    'mat_type': 'matfree',
-                                    'localsolve': {'ksp_type': 'preonly',
-                                                    'mat_type': 'matfree',
-                                                    'pc_type': 'fieldsplit',
-                                                    'pc_fieldsplit_type': 'schur'},
-                                    'pc_python_type': 'firedrake.GTMGPC',
-                                    'gt': gt_params_nested,
-                                    'ksp_view': None
-                                    }}
+                                    'pc_python_type': 'firedrake.HybridizationPC',
+                                    'hybridization': {'ksp_type': 'cg',
+                                                      'pc_type': 'python',
+                                                      # nested schur option
+                                                      'localsolve': {'ksp_type': 'preonly',
+                                                                    'pc_type': 'fieldsplit',
+                                                                    'pc_fieldsplit_type': 'schur'},
+                                                       'pc_python_type': 'firedrake.GTMGPC',
+                                                       'gt': {'mg_levels': cheby_jacobi,
+                                                              'mg_coarse': mgmatexp}}}
 
+# These are the tests used for Jacks GTMG test in the Firedrake test suite
+# with globally matrix-free solves on the levels                                                              
+gtmg_global_matfree_params={'snes_type': 'ksponly',
+                            'mat_type': 'matfree',
+                            'ksp_type': 'preonly',
+                            'pc_type': 'python',
+                            'pc_python_type': 'firedrake.HybridizationPC',
+                            'hybridization': {'ksp_type': 'cg',
+                                                'pc_type': 'python',
+                                                'mat_type': 'matfree', #!
+                                                'pc_python_type': 'firedrake.GTMGPC',
+                                                'gt': gt_params_global_matfree,
+                                                'ksp_view': None}}
 
-jacks_baseline_params_nested_schur = {'mat_type': 'matfree',
-                    'ksp_type': 'preonly',
-                    'pc_type': 'python',
-                    'pc_python_type': 'firedrake.HybridizationPC',
-                    'hybridization': {'ksp_type': 'cg',
-                                        'pc_type': 'python',
-                                        'localsolve': {'ksp_type': 'preonly',
-                                                        # 'mat_type': 'matfree', #not matfree!
-                                                        'pc_type': 'fieldsplit',
-                                                        'pc_fieldsplit_type': 'schur'},
-                                        'pc_python_type': 'firedrake.GTMGPC',
-                                        'gt': {'mg_levels': {'ksp_type': 'chebyshev',
-                                                            'pc_type': 'jacobi',
-                                                            'ksp_max_it': 3},
-                                            'mg_coarse': {'ksp_type': 'preonly',
-                                                            'pc_type': 'mg',
-                                                            'pc_mg_type': 'full',
-                                                            'mg_levels': {'ksp_type': 'chebyshev',
-                                                                        'pc_type': 'jacobi',
-                                                                        'ksp_max_it': 3}}}}}
-jacks_baseline_params_local_nested = {'mat_type': 'matfree',
-                    'ksp_type': 'preonly',
-                    'pc_type': 'python',
-                    'pc_python_type': 'firedrake.HybridizationPC',
-                    'hybridization': {'ksp_type': 'cg',
-                                        'pc_type': 'python',
-                                        'pc_python_type': 'firedrake.GTMGPC',
-                                        'gt': {'mg_levels': {'ksp_type': 'chebyshev',
-                                                            'pc_type': 'jacobi',
-                                                            'ksp_max_it': 3},
-                                            'mg_coarse': {'ksp_type': 'preonly',
-                                                            'pc_type': 'mg',
-                                                            'pc_mg_type': 'full',
-                                                            'mg_levels': {'ksp_type': 'chebyshev',
-                                                                        'pc_type': 'jacobi',
-                                                                        'ksp_max_it': 3}}}}}
+# These are the tests used for Jacks GTMG test in the Firedrake test suite
+# with globally matrix-free solves on the levels and a nesting of schur complements on the trace solve
+gtmg_global_matfree_nested_schur_params =  {'snes_type': 'ksponly',
+                                            'mat_type': 'matfree',
+                                            'ksp_type': 'preonly',
+                                            'pc_type': 'python',
+                                            'pc_python_type': 'firedrake.HybridizationPC',
+                                            'hybridization': {'ksp_type': 'cg',
+                                                                'pc_type': 'python',
+                                                                'mat_type': 'matfree', #!
+                                                                # nested schur option, but not locally matfree!
+                                                                'localsolve': {'ksp_type': 'preonly',
+                                                                                # 'mat_type': 'matfree',
+                                                                                'pc_type': 'fieldsplit',
+                                                                                'pc_fieldsplit_type': 'schur'},
+                                                                'pc_python_type': 'firedrake.GTMGPC',
+                                                                'gt': gt_params_global_matfree,
+                                                                'ksp_view': None}}
 
-baseline_params = {'mat_type': 'matfree',
-                  'ksp_type': 'preonly',
-                  'pc_type': 'python',
-                  'pc_python_type': 'firedrake.HybridizationPC',
-                  'hybridization': {"ksp_type": "preonly",
-                                    'pc_type': 'lu',
-                                    'ksp_rtol': 1.e-16}}
+# Fully matrix-free GTMG
+# We need nested schur for local matfree
+gtmg_fully_matfree_params ={'snes_type': 'ksponly',
+                            'mat_type': 'matfree',
+                            'ksp_type': 'preonly',
+                            'pc_type': 'python',
+                            'pc_python_type': 'firedrake.HybridizationPC',
+                            'hybridization': {'ksp_type': 'cg',
+                                              'pc_type': 'python',
+                                              'mat_type': 'matfree',
+                                             'localsolve': {'ksp_type': 'preonly',
+                                                            'mat_type': 'matfree',  #local-matfree!
+                                                            'pc_type': 'fieldsplit',
+                                                            'pc_fieldsplit_type': 'schur'},
+                                             'pc_python_type': 'firedrake.GTMGPC',
+                                             'gt': gt_params_fully_matfree,
+                                             'ksp_view': None}}
