@@ -14,4 +14,4 @@ export BASEP='gtmg_matexpl_params'
 export PERFORMP='gtmg_global_matfree_params'
 export SOLTYPE='quadratic'
 export PROJECTEXACTSOL="" #--projectexactsol
-export CASE='/case3/'
+export CASE='/case2/'

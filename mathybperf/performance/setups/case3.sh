@@ -15,4 +15,4 @@ export BASEP='gtmg_matexpl_params'
 export PERFORMP='gtmg_matexpl_nested_schur_params'
 export SOLTYPE='quadratic'
 export PROJECTEXACTSOL="" #--projectexactsol
-export CASE='/case2/'
+export CASE='/case3/'
