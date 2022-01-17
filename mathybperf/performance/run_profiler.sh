@@ -1,8 +1,11 @@
 #!/bin/sh
 
+# source /Users/sv2518/firedrakeinstalls/fresh/firedrake/bin/activate
+# cd /Users/sv2518/firedrakeexamples/mathybperf/mathybperf/performance
+
 # turn off threading
 export OMP_NUM_THREADS=1
-source /Users/sv2518/firedrakeinstalls/firedrake/bin/activate
+source /Users/sv2518/firedrakeinstalls/fresh/firedrake/bin/activate
 cd /Users/sv2518/firedrakeexamples/mathybperf/mathybperf/performance
 
 # mode of the script, options are:
