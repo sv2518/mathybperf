@@ -215,11 +215,9 @@ git commit -m "New script to fetch flamegraphs was generated."
 CURRENT_BRANCH=$(git branch --show-current)
 git push origin $CURRENT_BRANCH
 
-# Keep track of the sh file
-SCRIPT="run_profiler.sh"
-cp $SCRIPT $BASENAME"backup_of_"$SCRIPT
-
-# System and Firedrake information
+if $DOTEX
+then
+    # System and Firedrake information
     system_profiler -detailLevel mini SPSoftwareDataType SPHardwareDataType > "./"$FOLDER$CASE"systeminfo.txt"
     firedrake-status > "./"$FOLDER$CASE"firedrakestatus.txt"
 
