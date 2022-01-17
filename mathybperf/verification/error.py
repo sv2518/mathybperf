@@ -44,19 +44,19 @@ def check_var_problem(a, L, w):
     assert np.allclose(dat1[1], dat2[1], rtol=1.e-6), "Pressure in solution does not solve the variational problem."
 
 
-def project_trace_solution(T, exact_sol):
+def project_trace_solution(T, exact_sol, degree):
     lmbda_t = TrialFunction(T)
     gamma_t = TestFunction(T)
-    a_t = (lmbda_t * gamma_t * ds_t +
-            lmbda_t * gamma_t * ds_v +
-            lmbda_t * gamma_t * ds_b +
-            lmbda_t('+') * gamma_t('+') * dS_h +
-            lmbda_t('+') * gamma_t('+') * dS_v)
-    l_t = (exact_sol * gamma_t * ds_t +
-            exact_sol * gamma_t * ds_v +
-            exact_sol * gamma_t * ds_b +
-            exact_sol('+') * gamma_t('+') * dS_h +
-            exact_sol('+') * gamma_t('+') * dS_v)
+    a_t = (lmbda_t * gamma_t * ds_t(degree=degree) +
+            lmbda_t * gamma_t * ds_v(degree=degree) +
+            lmbda_t * gamma_t * ds_b(degree=degree) +
+            lmbda_t('+') * gamma_t('+') * dS_h(degree=degree) +
+            lmbda_t('+') * gamma_t('+') * dS_v(degree=degree))
+    l_t = (exact_sol * gamma_t * ds_t(degree=degree) +
+            exact_sol * gamma_t * ds_v(degree=degree) +
+            exact_sol * gamma_t * ds_b(degree=degree) +
+            exact_sol('+') * gamma_t('+') * dS_h(degree=degree) +
+            exact_sol('+') * gamma_t('+') * dS_v(degree=degree))
 
     w_t_exact = Function(T)
     vpb_t = LinearVariationalProblem(lhs(a_t-l_t), rhs(a_t-l_t), w_t_exact)
