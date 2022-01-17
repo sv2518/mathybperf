@@ -7,9 +7,9 @@ def check_error(w, w2):
     sigma, u = w.split()
     sigma2, u2 = w2.split()
     norm = errornorm(sigma, sigma2, norm_type="L2")
-    assert np.allclose(sigma.dat.data, sigma2.dat.data, rtol=1.e-2), norm
+    assert np.allclose(sigma.dat.data, sigma2.dat.data, rtol=1.e-6), norm
     norm = errornorm(u, u2, norm_type="L2")
-    assert np.allclose(u.dat.data, u2.dat.data, atol=1.e-2), norm
+    assert np.allclose(u.dat.data, u2.dat.data, rtol=1.e-6), norm
 
 def get_errors(w, w2):
     """Returns error in various norms."""
@@ -40,8 +40,8 @@ def check_var_problem(a, L, w):
     B = AssembledVector(w)
     dat1 = assemble(A*B).dat.data
     dat2 = assemble(L).dat.data
-    assert np.allclose(dat1[0], dat2[0], rtol=1.e-2), "Velocity in solution does not solve the variational problem."
-    assert np.allclose(dat1[1], dat2[1], rtol=1.e-2), "Pressure in solution does not solve the variational problem."
+    assert np.allclose(dat1[0], dat2[0], rtol=1.e-6), "Velocity in solution does not solve the variational problem."
+    assert np.allclose(dat1[1], dat2[1], rtol=1.e-6), "Pressure in solution does not solve the variational problem."
 
 
 def project_trace_solution(T, exact_sol):
