@@ -52,9 +52,9 @@ fi
 # first choose a case name
 FOLDER='results/mixed_poisson/'
 FOLDER+='pplus1pow3/'  # penalty set permanently to this
-TRAFOTYPE='trafo_'$TRAFO
-BASENAME=$FOLDER$TRAFOTYPE$CASE
-FLAMEBASENAME='flames/mixed_poisson/pplus1pow3/'$TRAFOTYPE$CASE
+TRAFOTYPE='trafo_'$TRAFO'/'
+BASENAME=$FOLDER$CASE$TRAFOTYPE
+FLAMEBASENAME='flames/mixed_poisson/pplus1pow3/'$CASE$TRAFOTYPE
 LINKS=""
 CURLS=""
 WEBPAGE="https://raw.githubusercontent.com/sv2518/mathybperf/main/mathybperf/performance/"
@@ -203,16 +203,14 @@ then
     done
 fi
 
-# Save the links to the svgs in a file for easy access from the report
-# but a note that explain how to fetch this automatically to a local repo
-NOTE="\nIf you want the flamegraphs locally as svgs just run\n\ncurl -OL "$WEBPAGE$BASEFLAMENAME"curlthesvgs.sh\n\n and then\n\nsh ./curlthesvgs.sh."
-touch $BASEFLAMENAME"linkstosvgs.tex"
-echo $LINKS"\n"$NOTE > $BASEFLAMENAME"linkstosvgs.tex"
+# Keep track of the sh file
+SCRIPT="run_profiler.sh"
+cp $SCRIPT $BASENAME"backup_of_"$SCRIPT
 
 # Generate and publish script to fetch the svg files
-touch $BASEFLAMENAME"curlthesvgs.sh"
-echo "#!/bin/sh\nmkdir -p ./svgs/"$BASEFLAMENAME"\ncd svgs\n"$CURLS"\n" > $BASEFLAMENAME"curlthesvgs.sh"
-git add $BASEFLAMENAME"curlthesvgs.sh"
+touch $FLAMEBASENAME"curlthesvgs.sh"
+echo "#!/bin/sh\nmkdir -p ./svgs/"$FLAMEBASENAME"\ncd svgs\n"$CURLS"\n" > $FLAMEBASENAME"curlthesvgs.sh"
+git add $FLAMEBASENAME"curlthesvgs.sh"
 git commit -m "New script to fetch flamegraphs was generated."
 CURRENT_BRANCH=$(git branch --show-current)
 git push origin $CURRENT_BRANCH
