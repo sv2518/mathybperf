@@ -19,29 +19,34 @@ ls
 # mode of the script, options are:
 # do we want to generate a tex from this?
 # do we want to generate new results?
-ARG0="$1"
 ARG1="$2"
 ARG2="$3"
-if [[ "$ARG1" == "--nores" || "$ARG2" == "--nores" ]]
+ARG3="$3"
+if [[ "$ARG1" == "--nores" || "$ARG2" == "--nores" || "$ARG3" == "--nores" ]]
 then
     DORES=false
 else
     DORES=true
 fi
-if [[ "$ARG1" == "--tex" || "$ARG2" == "--tex" ]]
+if [[ "$ARG1" == "--tex" || "$ARG2" == "--tex" || "$ARG3" == "--tex" ]]
 then
     DOTEX=true
 else
     DOTEX=false
 fi
+if [[ "$ARG1" == "--verification" || "$ARG2" == "--verification" || "$ARG3" == "--verification" ]]
+then
+    VERIFICATION="--verification"
+    # For verification of the performance runs we need to
+    # project the exact solutions to get some errors.
+    # It's sufficient to get error in one state (we test the cool state).
+    PROJECTEXACTSOL=--projectexactsol
+    # Projecting the solutions will slow down the runs,
+    # but for verification we don't care for performance.
+    # Hence no flamegraphs will be generated.
+    FLAME=false
+fi
 
-# setup (MAKE YOUR CHANGES HERE
-current_case="$ARG0"
-my_dir="$(dirname "$0")"
-echo $my_dir
-pwd
-. $my_dir/setups/$current_case.sh
-echo $CASE
 
 # setup output folder name
 # first choose a case name
