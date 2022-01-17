@@ -6,6 +6,7 @@ from mathybperf.utils.solver_utils import SolverBag
 from mathybperf.utils.setup_utils import fetch_setup
 from firedrake.petsc import OptionsManager
 import importlib
+import sys
 
 ######################################
 ##############   MAIN   ##############
@@ -40,9 +41,13 @@ if "log_view" not in OptionsManager.commandline_options:
 # get internal time data of solvers
 petsc_stage_name = "stage"
 with PETSc.Log.Stage(petsc_stage_name):
-    quad_degree, (w, w2), (w_t, w_t_exact), mesh = problem(problem_bag, solver_bag,
-                                                           verification=args.verification,
-                                                           project=args.projectexactsol)
+    try:
+        quad_degree, (w, w2), (w_t, w_t_exact), mesh = problem(problem_bag, solver_bag,
+                                                               verification=args.verification,
+                                                               project=args.projectexactsol)
+        VERIFY_STATUS = "success"
+    except AssertionError:
+        VERIFY_STATUS = str(sys.exc_info()[2])
     internal_timedata_cold = time_data.get_internal_timedata(warmup, mesh.comm)
 tas_data.update(internal_timedata_cold)
 
@@ -77,21 +82,30 @@ if args.projectexactsol:
     tas_data.update(accuracy_data)
     data_to_tex.update(accuracy_data)
 
-# write out data to .csv
-datafile = pd.DataFrame(tas_data)
-datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="w",header=True)
+if not args.verfication:
+    # write out data to .csv
+    datafile = pd.DataFrame(tas_data)
+    datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="w",header=True)
 
-# also remember which parameter sets we used for the solver
-paramsfilename = args.name + '_parameters.txt'
-with open(paramsfilename, 'w') as convert_file:
-    convert_file.write(json.dumps(parameters, indent=4))
+    # also remember which parameter sets we used for the solver
+    paramsfilename = args.name + '_parameters.txt'
+    with open(paramsfilename, 'w') as convert_file:
+        convert_file.write(json.dumps(parameters, indent=4))
 
-# also save latex table for setup data separate
-setup_filename = args.name + '_setup.tex'
-with open(setup_filename, 'w') as convert_file:
-    convert_file.write(problem_bag.latex())
+    # also save latex table for setup data separate
+    setup_filename = args.name + '_setup.tex'
+    with open(setup_filename, 'w') as convert_file:
+        convert_file.write(problem_bag.latex())
 
-# also save latex table for size data separate
-size_table_filename = args.name + '_extradata.tex'
-with open(size_table_filename, 'w') as convert_file:
-    convert_file.write(pd.DataFrame(data_to_tex, index=[0]).to_latex(index=False))
+    # also save latex table for size data separate
+    size_table_filename = args.name + '_extradata.tex'
+    with open(size_table_filename, 'w') as convert_file:
+        convert_file.write(pd.DataFrame(data_to_tex, index=[0]).to_latex(index=False))
+else:
+    # write an error file if verification is turned on and failed and then fail with errorcode
+    error = int(not VERIFY_STATUS=="success")
+    if error != 0:
+        err_filename = args.name[:args.name.rfind("/")+1] + 'verification.err'
+        with open(err_filename, 'w') as convert_file:
+            convert_file.write(str(VERIFY_STATUS))
+    sys.exit(error)
