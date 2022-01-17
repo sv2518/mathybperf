@@ -98,48 +98,59 @@ then
                     then
                         FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
                     fi
-                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --clean  $PROJECTEXACTSOL > $NNAME"_log.txt"
-                    if $FLAME
-                    then
-                    ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
-                    fi
-                    # Make new flamegraphs online accessible
-                    git add $FLAMENAME*"_flame.svg"
-                    git add -f $FLAMENAME*"_flame.txt"
-                    git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
-                    git push origin $CURRENT_BRANCH
-                    # Generate data for links
-                    long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
-                    encode_long_url=$(urlencode $long_url)
-                    short_url=$(curl -s "http://tinyurl.com/api-create.php?url=${encode_long_url}")
-                    LINKS=$LINKS"\url{$short_url}\n\n"
-                    CURLS=$CURLS"curl "$WEBPAGE$FNAME"_flame.svg>"$FNAME"_flame.svg\n"
+                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --clean  $PROJECTEXACTSOL $VERIFICATION > $NNAME"_log.txt"
+                    retcode=$?
 
-                    NNAME=$NAME$PARAMS
-                    FNAME=$FLAMENAME$PARAMS
-                    NNAME+='_warmed_up'
-                    FNAME+='_warmed_up'
-                    LINKS=$LINKS"Baseline warmed up run\n"
-                    if $FLAME
+                    if ! [ "$VERIFICATION" == "--verification" ]
                     then
-                        FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
+                        if $FLAME
+                        then
+                        ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
+                        fi
+                        # Make new flamegraphs online accessible
+                        git add $FLAMENAME*"_flame.svg"
+                        git add -f $FLAMENAME*"_flame.txt"
+                        git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
+                        git push origin $CURRENT_BRANCH
+                        # Generate data for links
+                        long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
+                        encode_long_url=$(urlencode $long_url)
+                        short_url=$(curl -s "http://tinyurl.com/api-create.php?url=${encode_long_url}")
+                        LINKS=$LINKS"\url{$short_url}\n\n"
+                        CURLS=$CURLS"curl "$WEBPAGE$FNAME"_flame.svg>"$FNAME"_flame.svg\n"
+
+                        NNAME=$NAME$PARAMS
+                        FNAME=$FLAMENAME$PARAMS
+                        NNAME+='_warmed_up'
+                        FNAME+='_warmed_up'
+                        LINKS=$LINKS"Baseline warmed up run\n"
+                        if $FLAME
+                        then
+                            FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
+                        fi
+                        python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" $PROJECTEXACTSOL $VERIFICATION > $NNAME"_log.txt"
+                    
+                        if $FLAME
+                        then
+                        ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
+                        fi
+                        # Make new flamegraphs online accessible
+                        git add $FLAMENAME*"_flame.svg"
+                        git add -f $FLAMENAME*"_flame.txt"
+                        git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
+                        git push origin $CURRENT_BRANCH
+                        # Generate data for links
+                        long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
+                        encode_long_url=$(urlencode $long_url)
+                        short_url=$(curl -s "http://tinyurl.com/api-create.php?url=${encode_long_url}")
+                        LINKS=$LINKS"\url{$short_url}"'\\\\\n\n'
+                        CURLS=$CURLS"curl "$WEBPAGE$FNAME"_flame.svg>"$FNAME"_flame.svg\n"
+                    else
+                        if [ $retcode == 1 ]
+                        then
+                            exit 1
+                        fi
                     fi
-                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" $PROJECTEXACTSOL > $NNAME"_log.txt"
-                    if $FLAME
-                    then
-                    ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
-                    fi
-                    # Make new flamegraphs online accessible
-                    git add $FLAMENAME*"_flame.svg"
-                    git add -f $FLAMENAME*"_flame.txt"
-                    git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
-                    git push origin $CURRENT_BRANCH
-                    # Generate data for links
-                    long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
-                    encode_long_url=$(urlencode $long_url)
-                    short_url=$(curl -s "http://tinyurl.com/api-create.php?url=${encode_long_url}")
-                    LINKS=$LINKS"\url{$short_url}"'\\\\\n\n'
-                    CURLS=$CURLS"curl "$WEBPAGE$FNAME"_flame.svg>"$FNAME"_flame.svg\n"
 
                     # run perf case
                     PARAMS=$PERFORMP
@@ -156,47 +167,58 @@ then
                         FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
                     fi
                     python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --clean $PROJECTEXACTSOL > $NNAME"_log.txt"
-                    if $FLAME
-                    then
-                    ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
-                    fi
-                    # Make new flamegraphs online accessible
-                    git add $FLAMENAME*"_flame.svg"
-                    git add -f $FLAMENAME*"_flame.txt"
-                    git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
-                    git push origin $CURRENT_BRANCH
-                    # Generate data for links
-                    long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
-                    encode_long_url=$(urlencode $long_url)
-                    short_url=$(curl -s "http://tinyurl.com/api-create.php?url=${encode_long_url}")
-                    LINKS=$LINKS"\url{$short_url}\n\n"
-                    CURLS=$CURLS"curl "$WEBPAGE$FNAME"_flame.svg>"$FNAME"_flame.svg\n"
+                    retcode=$?
 
-                    NNAME=$NAME$PARAMS
-                    FNAME=$FLAMENAME$PARAMS
-                    NNAME+='_warmed_up'
-                    FNAME+='_warmed_up'
-                    LINKS=$LINKS"Performance warmed up run\n"
-                    if $FLAME
+                    if ! [ "$VERIFICATION" == "--verification" ]
                     then
-                        FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
+                        if $FLAME
+                        then
+                        ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
+                        fi
+                        # Make new flamegraphs online accessible
+                        git add $FLAMENAME*"_flame.svg"
+                        git add -f $FLAMENAME*"_flame.txt"
+                        git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
+                        git push origin $CURRENT_BRANCH
+                        # Generate data for links
+                        long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
+                        encode_long_url=$(urlencode $long_url)
+                        short_url=$(curl -s "http://tinyurl.com/api-create.php?url=${encode_long_url}")
+                        LINKS=$LINKS"\url{$short_url}\n\n"
+                        CURLS=$CURLS"curl "$WEBPAGE$FNAME"_flame.svg>"$FNAME"_flame.svg\n"
+
+                        NNAME=$NAME$PARAMS
+                        FNAME=$FLAMENAME$PARAMS
+                        NNAME+='_warmed_up'
+                        FNAME+='_warmed_up'
+                        LINKS=$LINKS"Performance warmed up run\n"
+                        if $FLAME
+                        then
+                            FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
+                        fi
+                        python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" $PROJECTEXACTSOL > $NNAME"_log.txt"
+
+                        if $FLAME
+                        then
+                        ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
+                        fi
+                        # Make new flamegraphs online accessible
+                        git add $FLAMENAME*"_flame.svg"
+                        git add -f $FLAMENAME*"_flame.txt"
+                        git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
+                        git push origin $CURRENT_BRANCH
+                        # Generate data for links
+                        long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
+                        encode_long_url=$(urlencode $long_url)
+                        short_url=$(curl -s "http://tinyurl.com/api-create.php?url=${encode_long_url}")
+                        LINKS=$LINKS'\url{'$short_url'}\\\\\n'
+                        CURLS=$CURLS"curl "$WEBPAGE$FNAME"_flame.svg>"$FNAME"_flame.svg\n"
+                    else
+                        if [ $retcode == 1 ]
+                        then
+                            exit 1
+                        fi
                     fi
-                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" $PROJECTEXACTSOL > $NNAME"_log.txt"
-                    if $FLAME
-                    then
-                    ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
-                    fi
-                    # Make new flamegraphs online accessible
-                    git add $FLAMENAME*"_flame.svg"
-                    git add -f $FLAMENAME*"_flame.txt"
-                    git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
-                    git push origin $CURRENT_BRANCH
-                    # Generate data for links
-                    long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
-                    encode_long_url=$(urlencode $long_url)
-                    short_url=$(curl -s "http://tinyurl.com/api-create.php?url=${encode_long_url}")
-                    LINKS=$LINKS'\url{'$short_url'}\\\\\n'
-                    CURLS=$CURLS"curl "$WEBPAGE$FNAME"_flame.svg>"$FNAME"_flame.svg\n"
                 done
             done
         done
