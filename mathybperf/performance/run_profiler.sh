@@ -220,25 +220,32 @@ SCRIPT="run_profiler.sh"
 cp $SCRIPT $BASENAME"backup_of_"$SCRIPT
 
 # System and Firedrake information
-system_profiler -detailLevel mini SPSoftwareDataType SPHardwareDataType > ./systeminfo.txt
-firedrake-status > ./firedrakestatus.txt
+    system_profiler -detailLevel mini SPSoftwareDataType SPHardwareDataType > "./"$FOLDER$CASE"systeminfo.txt"
+    firedrake-status > "./"$FOLDER$CASE"firedrakestatus.txt"
 
-# Move results over into report directory and push online
-PATH_TO_REPORT='../../../mathybperf_report/61dc091dbf10034613ed0daa/'
-find ./$FOLDER -type f | grep -i setup.tex$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
-find ./$FOLDER -type f | grep -i log.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
-find ./$FOLDER -type f | grep -i parameters.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
-find ./$FOLDER -type f | grep -i extradata.tex$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
-find ./ -type f | grep -i systeminfo.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
-find ./ -type f | grep -i firedrakestatus.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
-find ./ -type f | grep -i linkstosvgs.tex$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
-find ./$FOLDER -type f | grep -i setup.tex$ | xargs -I{} git -C $PATH_TO_REPORT add {} 
-find ./$FOLDER -type f | grep -i log.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {} 
-find ./$FOLDER -type f | grep -i parameters.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {}
-find ./$FOLDER -type f | grep -i extradata.tex$ | xargs -I{} git -C $PATH_TO_REPORT add {}
-find ./ -type f | grep -i systeminfo.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {}
-find ./ -type f | grep -i firedrakestatus.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {}
-find ./ -type f | grep -i linkstosvgs.tex$ | xargs -I{} git -C $PATH_TO_REPORT add {}
-git -C $PATH_TO_REPORT commit -m "New results"
-git -C $PATH_TO_REPORT pull origin master
-git -C $PATH_TO_REPORT push origin master
+    # Save the links to the svgs in a file for easy access from the report
+    # but a note that explain how to fetch this automatically to a local repo
+    NOTE="\nIf you want the flamegraphs locally as svgs just run\n\ncurl -OL "$WEBPAGE$FLAMEBASENAME"curlthesvgs.sh\n\n and then\n\nsh ./curlthesvgs.sh."
+    touch $FOLDER$CASE"linkstosvgs.tex"
+    echo $LINKS"\n"$NOTE > $FOLDER$CASE"linkstosvgs.tex"
+
+    # Move results over into report directory and push online
+    PATH_TO_REPORT='../../../mathybperf_report/61dc091dbf10034613ed0daa/'
+    find ./$FOLDER -type f | grep -i setup.tex$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
+    find ./$FOLDER -type f | grep -i log.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
+    find ./$FOLDER -type f | grep -i parameters.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
+    find ./$FOLDER -type f | grep -i extradata.tex$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
+    find ./ -type f | grep -i systeminfo.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
+    find ./ -type f | grep -i firedrakestatus.txt$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
+    find ./ -type f | grep -i linkstosvgs.tex$ | xargs -I{} ditto {} $PATH_TO_REPORT/{}
+    find ./$FOLDER -type f | grep -i setup.tex$ | xargs -I{} git -C $PATH_TO_REPORT add {} 
+    find ./$FOLDER -type f | grep -i log.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {} 
+    find ./$FOLDER -type f | grep -i parameters.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {}
+    find ./$FOLDER -type f | grep -i extradata.tex$ | xargs -I{} git -C $PATH_TO_REPORT add {}
+    find ./ -type f | grep -i systeminfo.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {}
+    find ./ -type f | grep -i firedrakestatus.txt$ | xargs -I{} git -C $PATH_TO_REPORT add {}
+    find ./ -type f | grep -i linkstosvgs.tex$ | xargs -I{} git -C $PATH_TO_REPORT add {}
+    git -C $PATH_TO_REPORT commit -m "New results"
+    git -C $PATH_TO_REPORT pull origin master
+    git -C $PATH_TO_REPORT push origin master
+fi
