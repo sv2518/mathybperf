@@ -59,7 +59,9 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
         check_var_problem(a, L, w)
 
         # double check that the reference solution is solving the variational problem
-        check_var_problem(a, L, w2.sub(1))
+        # (it always should, since we do MMS,
+        # but choosing an exact solution that does not fulfill the BCs can screw things up)
+        check_var_problem(a, L, w2)
 
         # compare iterative to reference solution
         check_error(w, w2)
