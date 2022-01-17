@@ -5,8 +5,16 @@
 
 # turn off threading
 export OMP_NUM_THREADS=1
-source /Users/sv2518/firedrakeinstalls/fresh/firedrake/bin/activate
-cd /Users/sv2518/firedrakeexamples/mathybperf/mathybperf/performance
+
+# setup (MAKE YOUR CHANGES HERE)
+ARG0="$1"
+current_case="$ARG0"
+my_dir="$(dirname "$0")"
+echo "MYDIR"
+echo $my_dir
+pwd
+ls
+. setups/$current_case.sh
 
 # mode of the script, options are:
 # do we want to generate a tex from this?
