@@ -1,3 +1,3 @@
 lint:
 	@echo "    Linting mathyperf codebase"
-	@python -m flake8 mathyperf
+	@python -m flake8 mathybperf
