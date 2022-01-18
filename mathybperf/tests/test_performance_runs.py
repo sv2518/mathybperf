@@ -8,7 +8,7 @@ def setup_names():
     setup_names = [s[s.rfind("/")+1:s.rfind(".")] for s in setup_list]
     return setup_names
 
-base_path = './performance/results/mixed_poisson/pplus1pow3/'
+base_path = './mathybperf/performance/results/mixed_poisson/pplus1pow3/'
 setups = setup_names()
 
 def run_profiler(name):
