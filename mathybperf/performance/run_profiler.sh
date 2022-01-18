@@ -50,7 +50,12 @@ fi
 
 # setup output folder name
 # first choose a case name
-FOLDER='results/mixed_poisson/'
+if ! [ "$VERIFICATION" == "--verification" ]
+then
+    FOLDER='results/mixed_poisson/'
+else
+    FOLDER='verification/results/mixed_poisson/'
+fi
 FOLDER+='pplus1pow3/'  # penalty set permanently to this
 TRAFOTYPE='trafo_'$TRAFO'/'
 BASENAME=$FOLDER$CASE$TRAFOTYPE
@@ -72,15 +77,16 @@ then
             do
                 for C in "${CELLSPD[@]}"
                 do
-                    FLAMENAME=$FLAMEBASENAME"order_"$P"/cells_"$C"/"
                     NAME=$BASENAME"order_"$P"/cells_"$C"/"
-                    mkdir -p $FLAMENAME
                     mkdir -p $NAME
+                    FLAMENAME=$FLAMEBASENAME"order_"$P"/cells_"$C"/"
                     CURLS=$CURLS"mkdir -p "$FLAMENAME"\n"
                     LINKS=$LINKS'\n\nLinks for flames of RT$_{p+1}$-DG$_{p}$ with $p='$P'$ and base mesh $'$C'\\times'$C'\\times'$C'$ refined on '$LEVELS' levels\\\\ \n\n'
                     if ! $FLAME
-                    then 
+                    then
                         FLARG=''
+                    else
+                        mkdir -p $FLAMENAME
                     fi
 
                     # run base case
@@ -225,17 +231,21 @@ then
     done
 fi
 
-# Keep track of the sh file
-SCRIPT="run_profiler.sh"
-cp $SCRIPT $BASENAME"backup_of_"$SCRIPT
 
-# Generate and publish script to fetch the svg files
-touch $FLAMEBASENAME"curlthesvgs.sh"
-echo "#!/bin/sh\nmkdir -p ./svgs/"$FLAMEBASENAME"\ncd svgs\n"$CURLS"\n" > $FLAMEBASENAME"curlthesvgs.sh"
-git add $FLAMEBASENAME"curlthesvgs.sh"
-git commit -m "New script to fetch flamegraphs was generated."
-CURRENT_BRANCH=$(git branch --show-current)
-git push origin $CURRENT_BRANCH
+if ! [ "$VERIFICATION" == "--verification" ]
+then
+    # Keep track of the sh file
+    SCRIPT="run_profiler.sh"
+    cp $SCRIPT $BASENAME"backup_of_"$SCRIPT
+
+    # Generate and publish script to fetch the svg files
+    touch $FLAMEBASENAME"curlthesvgs.sh"
+    echo "#!/bin/sh\nmkdir -p ./svgs/"$FLAMEBASENAME"\ncd svgs\n"$CURLS"\n" > $FLAMEBASENAME"curlthesvgs.sh"
+    git add $FLAMEBASENAME"curlthesvgs.sh"
+    git commit -m "New script to fetch flamegraphs was generated."
+    CURRENT_BRANCH=$(git branch --show-current)
+    git push origin $CURRENT_BRANCH
+fi
 
 if $DOTEX
 then
