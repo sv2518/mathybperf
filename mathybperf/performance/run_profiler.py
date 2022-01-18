@@ -113,4 +113,5 @@ else:
                     +"\nThe setup finished with the following status.\n"
                     +str(VERIFY_STATUS))
         convert_file.write(output)
-    sys.exit(error)
+    if error != 0:
+        sys.exit(error)
