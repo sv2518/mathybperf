@@ -4,7 +4,7 @@ import glob
 
 
 def setup_names():
-    setup_list = glob.glob("./performance/setups/*.sh")
+    setup_list = glob.glob("./mathybperf/performance/setups/*.sh")
     setup_names = [s[s.rfind("/")+1:s.rfind(".")] for s in setup_list]
     return setup_names
 
