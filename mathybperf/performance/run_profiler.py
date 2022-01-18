@@ -103,11 +103,13 @@ if not args.verification:
         convert_file.write(pd.DataFrame(data_to_tex, index=[0]).to_latex(index=False))
 else:
     # write an error file if verification is turned on and failed and then fail with errorcode
+    # The file is "rolling". It's overwritten for every configuration in a setup.
     error = int(not VERIFY_STATUS=="success")
-    err_filename = args.name[:args.name.rfind("/")+1] + 'verification.err'
+    err_filename = args.name[:args.name.rfind("trafo")] + 'verification.err'
     with open(err_filename, 'w') as convert_file:
-        output =("The following setup was run.\n"
-                    + str(problem_bag)
+        output =("The following setup was run last.\n"
+                    + str(problem_bag) + "\nSolver parameters:\n"
+                    + str(json.dumps(parameters, indent=4))
                     +"\nThe setup finished with the following status.\n"
                     +str(VERIFY_STATUS))
         convert_file.write(output)
