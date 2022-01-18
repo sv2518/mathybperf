@@ -6,6 +6,7 @@ from mathybperf.verification.error import check_error, check_var_problem, projec
 from mathybperf.verification.geometric import check_facetarea_and_cellvolume
 from firedrake import *
 import ufl
+from math import ceil
 
 def problem(problem_bag, solver_bag, verification, new=True, project=False):
     reset = not problem_bag.mesh or new  # setup new problem
