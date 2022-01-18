@@ -33,10 +33,9 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
     w2 = None
     if project:
         if problem_bag.exact_sol_type == "quadratic":
-            d = 5+problem_bag.order
-            fc1={'quadrature_degree': d+1}
-            fc2={'quadrature_degree': d}
-        if problem_bag.exact_sol_type == "exponential":
+            fc1={'quadrature_degree': ceil((1+problem_bag.order+1+1)/2)}
+            fc2={'quadrature_degree': ceil((2+problem_bag.order+3)/2)}
+        elif problem_bag.exact_sol_type == "exponential":
             d = 9+problem_bag.order
             fc1={'quadrature_degree': d+1}
             fc2={'quadrature_degree': d}
@@ -47,7 +46,7 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
         w2 = Function(problem_bag.space[0])
         w2.sub(0).project(ufl.grad(exact_sol), form_compiler_parameters=fc1, use_slate_for_inverse=False)
         w2.sub(1).project(exact_sol, form_compiler_parameters=fc2, use_slate_for_inverse=False)
-        w_t_exact = project_trace_solution(w_t.function_space(), exact_sol, degree=d)
+        w_t_exact = project_trace_solution(w_t.function_space(), exact_sol, degree=fc2['quadrature_degree'])
 
     # verification of error
     if verification:
