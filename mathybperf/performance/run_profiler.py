@@ -82,7 +82,7 @@ if args.projectexactsol:
     tas_data.update(accuracy_data)
     data_to_tex.update(accuracy_data)
 
-if not args.verfication:
+if not args.verification:
     # write out data to .csv
     datafile = pd.DataFrame(tas_data)
     datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="w",header=True)
@@ -104,8 +104,11 @@ if not args.verfication:
 else:
     # write an error file if verification is turned on and failed and then fail with errorcode
     error = int(not VERIFY_STATUS=="success")
-    if error != 0:
-        err_filename = args.name[:args.name.rfind("/")+1] + 'verification.err'
-        with open(err_filename, 'w') as convert_file:
-            convert_file.write(str(VERIFY_STATUS))
+    err_filename = args.name[:args.name.rfind("/")+1] + 'verification.err'
+    with open(err_filename, 'w') as convert_file:
+        output =("The following setup was run.\n"
+                    + str(problem_bag)
+                    +"\nThe setup finished with the following status."
+                    +str(VERIFY_STATUS))
+        convert_file.write(output)
     sys.exit(error)
