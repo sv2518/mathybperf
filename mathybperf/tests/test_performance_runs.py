@@ -12,9 +12,8 @@ base_path = './mathybperf/performance/verification/results/mixed_poisson/pplus1p
 setups = setup_names()
 
 def run_profiler(name):
-    proc = subprocess.run(["cd ./mathybperf/performance ; sh ./run_profiler.sh "+name+" --verification"],
-                          shell=True,
-                          executable='/bin/bash')
+    proc = subprocess.run(["cd ./mathybperf/performance ; /bin/bash ./run_profiler.sh "+name+" --verification"],
+                          shell=True)
     if proc.returncode!=0:
         error_file = base_path+name+'/verification.err'
         error_message = open(error_file, "r").read()
