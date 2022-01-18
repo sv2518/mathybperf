@@ -108,7 +108,7 @@ else:
     with open(err_filename, 'w') as convert_file:
         output =("The following setup was run.\n"
                     + str(problem_bag)
-                    +"\nThe setup finished with the following status."
+                    +"\nThe setup finished with the following status.\n"
                     +str(VERIFY_STATUS))
         convert_file.write(output)
     sys.exit(error)
