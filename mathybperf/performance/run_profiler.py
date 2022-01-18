@@ -48,7 +48,17 @@ with PETSc.Log.Stage(petsc_stage_name):
         VERIFY_STATUS = "success"
     except AssertionError:
         VERIFY_STATUS = str(sys.exc_info()[2])
-    internal_timedata_cold = time_data.get_internal_timedata(warmup, problem_bag.mesh.comm)
+        error = int(not VERIFY_STATUS=="success")
+        err_filename = args.name[:args.name.rfind("trafo")] + 'verification.err'
+        with open(err_filename, 'w') as convert_file:
+            output =("The following setup was run last.\n"
+                        + str(problem_bag) + "\nSolver parameters:\n"
+                        + str(json.dumps(parameters, indent=4))
+                        +"\nThe setup finished with the following status.\n"
+                        +str(VERIFY_STATUS))
+        convert_file.write(output)
+        sys.exit(error)
+    internal_timedata_cold = time_data.get_internal_timedata(warmup, mesh.comm)
 tas_data.update(internal_timedata_cold)
 
 # add general times spend on different parts
