@@ -425,16 +425,16 @@ mgmatexp = {'ksp_type': 'preonly',
 # Params for solves on levels
 cheby_jacobi = {"ksp_type": "chebyshev",
                           "ksp_max_it": 3,
-                          "pc_type": "none"}
+                          "pc_type": "jacobi"}
 cheby_none = {"ksp_type": "chebyshev",
                     "ksp_max_it": 3,
-                    "pc_type": "jacobi"}
+                    "pc_type": "none"}
 
 # Params for GTMG
 gt_params_matexp = {'mg_levels': cheby_jacobi,
                     'mg_coarse': mgmatexp}
 gt_params_global_matfree = {"mg_coarse": mgmatfree,
-                            "mg_levels": cheby_jacobi,
+                            "mg_levels": cheby_none,
                             'mat_type': 'matfree'}
 gt_params_fully_matfree = {"mg_coarse": mgmatfree,
                            "mg_levels": cheby_none,
@@ -467,6 +467,7 @@ gtmg_matexpl_params =  {'mat_type': 'matfree',
                         'pc_python_type': 'firedrake.HybridizationPC',
                         'hybridization': {'ksp_type': 'cg',
                                           'pc_type': 'python',
+                                          'ksp_rtol': 1e-8,
                                           'pc_python_type': 'firedrake.GTMGPC',
                                           'gt': {'mg_levels': cheby_jacobi,
                                                  'mg_coarse': mgmatexp},
