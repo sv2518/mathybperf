@@ -447,7 +447,8 @@ hybridization_lu_params = {'mat_type': 'matfree',
                            'pc_type': 'python',
                            'pc_python_type': 'firedrake.HybridizationPC',
                            'hybridization': {'ksp_type': 'preonly',
-                                             'pc_type': 'lu'},
+                                             'pc_type': 'lu',
+                                             'ksp_rtol': 1.e-8},
                            'ksp_view': None}
 
 # Hyridization, globally matfree with CG, used in Thomas' matrix-free hybridization test
@@ -457,7 +458,7 @@ hybridization_global_matfree_cg =  {'mat_type': 'matfree',
                                     'pc_python_type': 'firedrake.HybridizationPC',
                                     'hybridization': {'ksp_type': 'cg',
                                                      'pc_type': 'none',
-                                                     'ksp_rtol': 1e-8,
+                                                     'ksp_rtol': 1.e-8,
                                                      'mat_type': 'matfree'}}
 
 # These are the tests used for Jacks GTMG test in the Firedrake test suite
@@ -481,6 +482,7 @@ gtmg_matexpl_nested_schur_params = {'mat_type': 'matfree',
                                     'pc_python_type': 'firedrake.HybridizationPC',
                                     'hybridization': {'ksp_type': 'cg',
                                                       'pc_type': 'python',
+                                                      'ksp_rtol': 1.e-8,
                                                       # nested schur option
                                                       'localsolve': {'ksp_type': 'preonly',
                                                                     'pc_type': 'fieldsplit',
@@ -500,6 +502,7 @@ gtmg_global_matfree_params={'snes_type': 'ksponly',
                                                 'pc_type': 'python',
                                                 'mat_type': 'matfree', #!
                                                 'pc_python_type': 'firedrake.GTMGPC',
+                                                'ksp_rtol': 1.e-8,
                                                 'gt': gt_params_global_matfree,
                                                 'ksp_view': None}}
 
@@ -518,6 +521,7 @@ gtmg_global_matfree_nested_schur_params =  {'snes_type': 'ksponly',
                                                                                 # 'mat_type': 'matfree',
                                                                                 'pc_type': 'fieldsplit',
                                                                                 'pc_fieldsplit_type': 'schur'},
+                                                                'ksp_rtol': 1.e-8,
                                                                 'pc_python_type': 'firedrake.GTMGPC',
                                                                 'gt': gt_params_global_matfree,
                                                                 'ksp_view': None}}
@@ -532,10 +536,11 @@ gtmg_fully_matfree_params ={'snes_type': 'ksponly',
                             'hybridization': {'ksp_type': 'cg',
                                               'pc_type': 'python',
                                               'mat_type': 'matfree',
-                                             'localsolve': {'ksp_type': 'preonly',
-                                                            'mat_type': 'matfree',  #local-matfree!
-                                                            'pc_type': 'fieldsplit',
-                                                            'pc_fieldsplit_type': 'schur'},
-                                             'pc_python_type': 'firedrake.GTMGPC',
-                                             'gt': gt_params_fully_matfree,
-                                             'ksp_view': None}}
+                                              'ksp_rtol': 1.e-8,
+                                              'localsolve': {'ksp_type': 'preonly',
+                                                             'mat_type': 'matfree',  #local-matfree!
+                                                             'pc_type': 'fieldsplit',
+                                                             'pc_fieldsplit_type': 'schur'},
+                                              'pc_python_type': 'firedrake.GTMGPC',
+                                              'gt': gt_params_fully_matfree,
+                                              'ksp_view': None}}
