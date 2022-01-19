@@ -6,7 +6,7 @@ from mathybperf.utils.solver_utils import SolverBag
 from mathybperf.utils.setup_utils import fetch_setup
 from firedrake.petsc import OptionsManager
 import importlib
-import sys
+import sys, traceback
 
 ######################################
 ##############   MAIN   ##############
@@ -46,15 +46,15 @@ with PETSc.Log.Stage(petsc_stage_name):
                                                                verification=args.verification,
                                                                project=args.projectexactsol)
         VERIFY_STATUS = "success"
-    except AssertionError:
-        VERIFY_STATUS = str(sys.exc_info()[2])
+    except (AssertionError, ValueError) as e:
+        VERIFY_STATUS = traceback.format_exc()
         error = int(not VERIFY_STATUS=="success")
         err_filename = args.name[:args.name.rfind("trafo")] + 'verification.err'
         with open(err_filename, 'w') as convert_file:
             output =("The following setup was run last.\n"
                         + str(problem_bag) + "\nSolver parameters:\n"
                         + str(json.dumps(parameters, indent=4))
-                        +"\nThe setup finished with the following status.\n"
+                        +"\n\nThe setup finished with the following status.\n\n"
                         +str(VERIFY_STATUS))
             convert_file.write(output)
         sys.exit(error)
@@ -123,4 +123,5 @@ else:
                     +"\nThe setup finished with the following status.\n"
                     +str(VERIFY_STATUS))
         convert_file.write(output)
-    sys.exit(error)
+    if error != 0:
+        sys.exit(error)
