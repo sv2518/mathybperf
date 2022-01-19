@@ -56,7 +56,7 @@ with PETSc.Log.Stage(petsc_stage_name):
                         + str(json.dumps(parameters, indent=4))
                         +"\nThe setup finished with the following status.\n"
                         +str(VERIFY_STATUS))
-        convert_file.write(output)
+            convert_file.write(output)
         sys.exit(error)
     internal_timedata_cold = time_data.get_internal_timedata(warmup, mesh.comm)
 tas_data.update(internal_timedata_cold)
@@ -123,5 +123,4 @@ else:
                     +"\nThe setup finished with the following status.\n"
                     +str(VERIFY_STATUS))
         convert_file.write(output)
-    if error != 0:
-        sys.exit(error)
+    sys.exit(error)
