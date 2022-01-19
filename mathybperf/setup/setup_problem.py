@@ -34,8 +34,8 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
     w2 = None
     if project:
         if problem_bag.exact_sol_type == "quadratic":
-            fc1={'quadrature_degree': ceil((1+problem_bag.order+1+1)/2)}
-            fc2={'quadrature_degree': ceil((2+problem_bag.order+3)/2)}
+            fc1={'quadrature_degree': 1+ceil((1+problem_bag.order+1+3)/2)}
+            fc2={'quadrature_degree': 1+ceil((2+problem_bag.order+1)/2)}
         elif problem_bag.exact_sol_type == "exponential":
             d = 9+problem_bag.order
             fc1={'quadrature_degree': d+1}
@@ -60,7 +60,8 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
 
         # double check that the reference solution is solving the variational problem
         # (it always should, since we do MMS,
-        # but choosing an exact solution that does not fulfill the BCs can screw things up)
+        # but choosing an exact solution that does not fulfill the BCs can screw things up
+        # and choosing the quadrature degree too low, too.)
         check_var_problem(a, L, w2)
 
         # compare iterative to reference solution
