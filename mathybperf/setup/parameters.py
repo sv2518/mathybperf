@@ -420,7 +420,10 @@ mgmatexp = {'ksp_type': 'preonly',
             'pc_mg_type': 'full',
             'mg_levels': {'ksp_type': 'chebyshev',
                           'pc_type': 'jacobi',
-                          'ksp_max_it': 3}}
+                          'ksp_max_it': 3},         
+            'mg_coarse': {'ksp_type': 'lu',
+                          'pc_factor_mat_solver_type': 'mumps',
+                          'pc_mat_mumps_icntl_14': 200}}
 
 # Params for solves on levels
 cheby_jacobi = {"ksp_type": "chebyshev",
