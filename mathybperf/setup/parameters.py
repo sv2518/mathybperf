@@ -448,6 +448,8 @@ hybridization_lu_params = {'mat_type': 'matfree',
                            'pc_python_type': 'firedrake.HybridizationPC',
                            'hybridization': {'ksp_type': 'preonly',
                                              'pc_type': 'lu',
+                                             'pc_factor_mat_solver_type': 'mumps',
+                                             'mg_coarse_assembled_pc_mat_mumps_icntl_14': 400,
                                              'ksp_rtol': 1.e-8},
                            'ksp_view': None}
 
