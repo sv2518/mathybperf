@@ -60,6 +60,6 @@ def project_trace_solution(T, exact_sol, degree):
 
     w_t_exact = Function(T)
     vpb_t = LinearVariationalProblem(lhs(a_t-l_t), rhs(a_t-l_t), w_t_exact)
-    solver_t = LinearVariationalSolver(vpb_t, solver_parameters={"ksp_type": "cg", "ksp_rtol": 1e-5,"pc_type": "bjacobi", "sub_pc_type": "icc"})
+    solver_t = LinearVariationalSolver(vpb_t, solver_parameters={"ksp_type": "cg", "ksp_rtol": 1e-6,"pc_type": "bjacobi", "sub_pc_type": "icc"})
     solver_t.solve()
     return w_t_exact
