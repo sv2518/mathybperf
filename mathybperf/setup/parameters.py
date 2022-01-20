@@ -446,7 +446,7 @@ hybridization_lu_params = {'mat_type': 'matfree',
                            'ksp_type': 'preonly',
                            'pc_type': 'python',
                            'pc_python_type': 'firedrake.HybridizationPC',
-                           'hybridization': {'ksp_type': 'cg'
+                           'hybridization': {'ksp_type': 'cg',
                                              'ksp_rtol': 1.e-8},
                            'ksp_view': None}
 
