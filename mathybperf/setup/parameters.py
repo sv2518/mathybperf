@@ -442,7 +442,7 @@ cheby_none = {"ksp_type": "chebyshev",
 # Params for GTMG
 gt_params_matexp = {'mg_levels': cheby_jacobi,
                     'mg_coarse': mgmatexp}
-gt_params_global_matfree = {"mg_coarse": mgmatfree,
+gt_params_global_matfree = {"mg_coarse": mgmatfree_mtf,
                             "mg_levels": cheby_none,
                             'mat_type': 'matfree'}
 gt_params_fully_matfree = {"mg_coarse": mgmatfree_mtf,
