@@ -401,20 +401,29 @@ lumatfree = {"ksp_type": "preonly",
 # 1) HELPER DICTs
 
 # MG params
-mgmatfree = {"snes_type": "ksponly",
-            "ksp_type": "preonly",
-            "mat_type": "matfree",
-            "pc_type": "mg",
-            "pc_mg_type": "full",
-            "mg_coarse_ksp_type": "preonly",
-            "mg_coarse_pc_type": "python",
-            "mg_coarse_pc_python_type": "firedrake.AssembledPC",
-            "mg_coarse_assembled_pc_type": "lu",
-            # "mg_coarse_assembled_pc_factor_mat_solver_type": "mumps",
-            # "mg_coarse_assembled_pc_mat_mumps_icntl_14": 200,
-            "mg_levels_ksp_type": "chebyshev",
-            "mg_levels_ksp_max_it": 3,
-            "mg_levels_pc_type": "none"}
+mgmatfree_mtf ={"snes_type": "ksponly",
+                "ksp_type": "preonly",
+                "mat_type": "matfree",
+                "pc_type": "mg",
+                "pc_mg_type": "full",
+                "mg_coarse_ksp_type": "preonly",
+                "mg_coarse_pc_type": "python",
+                "mg_coarse_pc_python_type": "firedrake.AssembledPC",
+                "mg_coarse_assembled_pc_type": "lu",
+                # "mg_coarse_assembled_pc_factor_mat_solver_type": "mumps",
+                # "mg_coarse_assembled_pc_mat_mumps_icntl_14": 200,
+                "mg_levels_ksp_type": "chebyshev",
+                "mg_levels_ksp_max_it": 3,
+                "mg_levels_pc_type": "none"}
+
+mgmatfree_mtx = {"snes_type": "ksponly",
+                "ksp_type": "preonly",
+                 "pc_type": "mg",
+                 "pc_mg_type": "full",
+                 "mg_levels_ksp_type": "chebyshev",
+                 "mg_levels_ksp_max_it": 3,
+                 "mg_levels_pc_type": "jacobi"}
+
 mgmatexp = {'ksp_type': 'preonly',
             'pc_type': 'mg',
             'pc_mg_type': 'full',
@@ -436,7 +445,7 @@ gt_params_matexp = {'mg_levels': cheby_jacobi,
 gt_params_global_matfree = {"mg_coarse": mgmatfree,
                             "mg_levels": cheby_none,
                             'mat_type': 'matfree'}
-gt_params_fully_matfree = {"mg_coarse": mgmatfree,
+gt_params_fully_matfree = {"mg_coarse": mgmatfree_mtf,
                            "mg_levels": cheby_none,
                            'mat_type': 'matfree'}
 
