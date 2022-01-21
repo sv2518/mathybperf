@@ -420,9 +420,15 @@ mgmatfree_mtx = {"snes_type": "ksponly",
                 "ksp_type": "preonly",
                  "pc_type": "mg",
                  "pc_mg_type": "full",
+                    "mg_coarse_ksp_type": "preonly",
+                    "mg_coarse_pc_type": "python",
+                    "mg_coarse_pc_python_type": "firedrake.AssembledPC",
+                    "mg_coarse_assembled_kpc_type": "cg",
+                    "mg_coarse_assembled_pc_type": "jacobi",
+                    "mg_coarse_assembled_ksp_rtol": 1.e-10,
                  "mg_levels_ksp_type": "chebyshev",
                  "mg_levels_ksp_max_it": 3,
-                 "mg_levels_pc_type": "jacobi"}
+                 "mg_levels_pc_type": "none"}
 
 mgmatexp = {'ksp_type': 'preonly',
             'pc_type': 'mg',
@@ -445,7 +451,7 @@ gt_params_matexp = {'mg_levels': cheby_jacobi,
 gt_params_global_matfree = {"mg_coarse": mgmatfree_mtf,
                             "mg_levels": cheby_none,
                             'mat_type': 'matfree'}
-gt_params_fully_matfree = {"mg_coarse": mgmatfree_mtf,
+gt_params_fully_matfree = {"mg_coarse": mgmatfree_mtx,
                            "mg_levels": cheby_none,
                            'mat_type': 'matfree'}
 
