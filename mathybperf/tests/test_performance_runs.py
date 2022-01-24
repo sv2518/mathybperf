@@ -18,9 +18,9 @@ def run_profiler(name):
     gc.collect()
     gc.collect()
     proc = subprocess.run(["cd ./mathybperf/performance ; /bin/bash ./run_profiler.sh "+name+" --verification"],
-                          stdout=subprocess.PIPE,
                           shell=True,
-                          close_fds=True)
+                          close_fds=True,
+                          check=True)
     if proc.returncode!=0:
         error_file = base_path+name+'/verification.err'
         print("Current directory is: ", os.system('pwd'))
