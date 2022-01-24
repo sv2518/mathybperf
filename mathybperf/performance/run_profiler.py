@@ -7,6 +7,9 @@ from mathybperf.utils.setup_utils import fetch_setup
 from firedrake.petsc import OptionsManager
 import importlib
 import sys, traceback
+import gc
+
+gc.collect()
 
 ######################################
 ##############   MAIN   ##############
@@ -56,6 +59,7 @@ with PETSc.Log.Stage(petsc_stage_name):
                         + str(json.dumps(parameters, indent=4))
                         +"\n\nThe setup finished with the following status.\n\n"
                         +str(VERIFY_STATUS))
+            gc.collect()
             convert_file.write(output)
         sys.exit(error)
     internal_timedata_cold = time_data.get_internal_timedata(warmup, mesh.comm)
