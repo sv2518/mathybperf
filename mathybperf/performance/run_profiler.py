@@ -46,7 +46,7 @@ with PETSc.Log.Stage(petsc_stage_name):
                                                                verification=args.verification,
                                                                project=args.projectexactsol)
         VERIFY_STATUS = "success"
-    except (AssertionError, ValueError) as e:
+    except Exception as e:
         VERIFY_STATUS = traceback.format_exc()
         error = int(not VERIFY_STATUS=="success")
         err_filename = args.name[:args.name.rfind("trafo")] + 'verification.err'
