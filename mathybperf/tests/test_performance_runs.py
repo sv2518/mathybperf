@@ -17,7 +17,9 @@ setups = setup_names()
 MAX_AS = 4000 * 1024 * 1024  # 4 GB
 def set_limits():
     # The maximum area (in bytes) of address space which may be taken by the process.
-    resource.setrlimit(resource.RLIMIT_AS, (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
+    resource.setrlimit(resource.RLIMIT_AS, (MAX_AS, resource.RLIM_INFINITY))
+    resource.setrlimit(resource.RLIMIT_SWAP, (MAX_AS, resource.RLIM_INFINITY))
+    resource.setrlimit(resource.RLIMIT_DATA, (MAX_AS, resource.RLIM_INFINITY))
 
 def run_profiler(name):
     gc.collect()
