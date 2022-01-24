@@ -3,6 +3,7 @@ import subprocess
 import glob
 import os
 import gc
+import resource
 
 
 def setup_names():
@@ -13,6 +14,11 @@ def setup_names():
 base_path = './mathybperf/performance/verification/results/mixed_poisson/pplus1pow3/'
 setups = setup_names()
 
+# Maximal virtual memory for subprocesses (in bytes).
+MAX_VIRTUAL_MEMORY = 4000 * 1024 * 1024  # 4 GB
+def set_limits():
+    resource.setrlimit(resource.RLIMIT_AS, (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
+
 def run_profiler(name):
     gc.collect()
     gc.collect()
@@ -20,7 +26,8 @@ def run_profiler(name):
     proc = subprocess.run(["cd ./mathybperf/performance ; /bin/bash ./run_profiler.sh "+name+" --verification"],
                           shell=True,
                           close_fds=True,
-                          check=True)
+                          check=True,
+                          preexec_fn=set_limits)
     if proc.returncode!=0:
         error_file = base_path+name+'/verification.err'
         print("Current directory is: ", os.system('pwd'))
