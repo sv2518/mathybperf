@@ -24,7 +24,8 @@ def run_profiler(name):
     if proc.returncode!=0:
         error_file = base_path+name+'/verification.err'
         print("Current directory is: ", os.system('pwd'))
-        error_message = open(error_file, "r").read()
+        with open(error_file, 'w') as file:
+            error_message = file.read()
     else:
         error_message="empty"
     assert proc.returncode==0, "Case "+name+" failed. Error message in file "+str(error_file)+": \n"+error_message
