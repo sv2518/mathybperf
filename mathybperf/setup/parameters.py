@@ -461,7 +461,7 @@ hybridization_lu_params = {'mat_type': 'matfree',
                            'ksp_type': 'preonly',
                            'pc_type': 'python',
                            'pc_python_type': 'firedrake.HybridizationPC',
-                           'hybridization': {'ksp_type': 'cg', 'ksp_rtol': 1.e-8},
+                           'hybridization': {'ksp_type': 'preonly', 'pc_type': 'lu', 'ksp_rtol': 1.e-8},
                            'ksp_view': None}
 
 # Hyridization, globally matfree with CG, used in Thomas' matrix-free hybridization test
