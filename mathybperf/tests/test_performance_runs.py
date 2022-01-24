@@ -2,6 +2,7 @@ import pytest
 import subprocess
 import glob
 import os
+import gc
 
 
 def setup_names():
@@ -13,6 +14,9 @@ base_path = './mathybperf/performance/verification/results/mixed_poisson/pplus1p
 setups = setup_names()
 
 def run_profiler(name):
+    gc.collect()
+    gc.collect()
+    gc.collect()
     proc = subprocess.run(["cd ./mathybperf/performance ; /bin/bash ./run_profiler.sh "+name+" --verification"],
                           stdout=subprocess.PIPE,
                           shell=True,
