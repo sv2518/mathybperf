@@ -32,9 +32,13 @@ def run_profiler(name):
         with open(error_file, 'r') as myfile:
             error_message = myfile.read()
         log_files = glob.glob(base_path+name+'/*/*/*/*log.txt')
-        log_file = max(log_files, key=os.path.getmtime)
-        print("\n\nThe log file contains:\n")
-        with open(log_file, 'r') as myfile:
+        log_file_curr = sorted(log_files, key=os.path.getmtime)[-1]
+        log_file_old = sorted(log_files, key=os.path.getmtime)[-1]
+        print("\n\nThe current log file contains:\n")
+        with open(log_file_curr, 'r') as myfile:
+            print(myfile.read())
+        print("\n\nThe previous log file contains:\n")
+        with open(log_file_old, 'r') as myfile:
             print(myfile.read())
     else:
         error_message="empty"
