@@ -555,7 +555,7 @@ gtmg_fully_matfree_params ={'snes_type': 'ksponly',
                                               'pc_type': 'python',
                                               'mat_type': 'matfree',
                                               'ksp_rtol': 1.e-8,
-                                              'ksp_max_it': 20,
+                                            #   'ksp_max_it': 20,
                                               'localsolve': {'ksp_type': 'preonly',
                                                              'mat_type': 'matfree',  #local-matfree!
                                                              'pc_type': 'fieldsplit',
