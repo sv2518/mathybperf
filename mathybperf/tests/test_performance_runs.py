@@ -31,8 +31,8 @@ def run_profiler(name):
         print("Current directory is: ", os.system('pwd'))
         with open(error_file, 'r') as myfile:
             error_message = myfile.read()
-        log_files = glob.glob(base_path+name+'/**/*log.txt')
-        log_file = max(log_files, key=os.path.getctime)
+        log_files = glob.glob(base_path+name+'/*/*/*/*log.txt')
+        log_file = max(log_files, key=os.path.getmtime)
         print("\n\nThe log file contains:\n")
         with open(log_file, 'r') as myfile:
             print(myfile.read())
