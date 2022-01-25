@@ -36,6 +36,6 @@ def run_profiler(name):
     assert returncode==0, "Case "+name+" failed. Error message in file "+str(error_file)+": \n"+error_message
 
 
-@pytest.mark.parametrize("name", ["case4"])
+@pytest.mark.parametrize("name", setups)
 def test_setups_mixed_poisson(name):
     run_profiler(name)
