@@ -452,7 +452,7 @@ gt_params_matexp = {'mg_levels': cheby_jacobi,
 gt_params_global_matfree = {"mg_coarse": mgmatfree_mtf,
                             "mg_levels": cheby_none,
                             'mat_type': 'matfree'}
-gt_params_fully_matfree = {"mg_coarse": mgmatfree_mtx,
+gt_params_fully_matfree = {"mg_coarse": mgmatfree_mtf,
                            "mg_levels": cheby_none,
                            'mat_type': 'matfree'}
 
