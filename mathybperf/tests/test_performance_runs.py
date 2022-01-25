@@ -29,7 +29,7 @@ def run_profiler(name):
     if returncode!=0:
         error_file = base_path+name+'/verification.err'
         print("Current directory is: ", os.system('pwd'))
-        with open(error_file, 'w') as myfile:
+        with open(error_file, 'r') as myfile:
             error_message = myfile.read()
     else:
         error_message="empty"
