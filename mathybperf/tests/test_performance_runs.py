@@ -41,7 +41,7 @@ def run_profiler(name, degree):
     gc.collect()
     gc.collect()
     proc = os.system("cd ./mathybperf/performance ; /bin/bash ./run_profiler.sh "+name+" "+str(degree)+" --verification")
-    if proc.returncode!=0:
+    if proc!=0:
         error_file = base_path+name+'/verification.err'
         # print("Current directory is: ", os.system('pwd'))
         # with open(error_file, 'r') as myfile:
@@ -59,7 +59,7 @@ def run_profiler(name, degree):
     else:
         error_file = "empty"
         error_message="empty"
-    assert proc.returncode==0, "Case "+name+" failed. Error message in file "+str(error_file)+": \n"+error_message
+    assert proc==0, "Case "+name+" failed. Error message in file "+str(error_file)+": \n"+error_message
 
 
 @pytest.mark.parametrize("name, degree", setups)
