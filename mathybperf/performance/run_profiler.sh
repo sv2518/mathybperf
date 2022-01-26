@@ -94,7 +94,7 @@ then
                     PARAMS=$BASEP
                     NNAME=$NAME$PARAMS
                     FNAME=$FLAMENAME$PARAMS
-                    firedrake-clean
+                    # firedrake-clean
                     NNAME+='_warm_up'
                     FNAME+='_warm_up'
                     reftochap='\\caseRT'$((P+1))"DG"$P
@@ -163,7 +163,7 @@ then
                     PARAMS=$PERFORMP
                     NNAME=$NAME$PARAMS
                     FNAME=$FLAMENAME$PARAMS
-                    firedrake-clean
+                    # firedrake-clean
                     NNAME+='_warm_up'
                     FNAME+='_warm_up'
                     reftochap='\\caseRT'$((P+1))"DG"$P
