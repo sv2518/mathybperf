@@ -53,7 +53,7 @@ with PETSc.Log.Stage(petsc_stage_name):
     except Exception as e:
         VERIFY_STATUS = traceback.format_exc()
         error = int(not VERIFY_STATUS=="success")
-        pid = os.get_pid()
+        pid = os.getpid()
         err_filename = args.name[:args.name.rfind("trafo")] + str(pid) + '_verification.err'
         with open(err_filename, 'w') as convert_file:
             output =("The following setup was run last.\n"
