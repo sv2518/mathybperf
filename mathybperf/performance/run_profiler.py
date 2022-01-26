@@ -18,6 +18,7 @@ gc.collect()
 parameters["pyop2_options"]["lazy_evaluation"] = False
 
 args = fetch_setup()
+PETSc.Sys.Print("Args: ", args+"\n")
 # Penalty is set the same for all runs
 penalty = lambda p, d: (p+1)**3
 warmup = "warm_up" if args.clean else "warmed_up"
@@ -98,23 +99,23 @@ if args.projectexactsol:
     tas_data.update(accuracy_data)
     data_to_tex.update(accuracy_data)
 
-if not args.verification:
-    PETSc.Sys.Print("Writing some files...")
-    # write out data to .csv
-    datafile = pd.DataFrame(tas_data)
-    datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="w",header=True)
+# if not args.verification:
+#     PETSc.Sys.Print("Writing some files...")
+#     # write out data to .csv
+#     datafile = pd.DataFrame(tas_data)
+#     datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="w",header=True)
 
-    # also remember which parameter sets we used for the solver
-    paramsfilename = args.name + '_parameters.txt'
-    with open(paramsfilename, 'w') as convert_file:
-        convert_file.write(json.dumps(parameters, indent=4))
+#     # also remember which parameter sets we used for the solver
+#     paramsfilename = args.name + '_parameters.txt'
+#     with open(paramsfilename, 'w') as convert_file:
+#         convert_file.write(json.dumps(parameters, indent=4))
 
-    # also save latex table for setup data separate
-    setup_filename = args.name + '_setup.tex'
-    with open(setup_filename, 'w') as convert_file:
-        convert_file.write(problem_bag.latex())
+#     # also save latex table for setup data separate
+#     setup_filename = args.name + '_setup.tex'
+#     with open(setup_filename, 'w') as convert_file:
+#         convert_file.write(problem_bag.latex())
 
-    # also save latex table for size data separate
-    size_table_filename = args.name + '_extradata.tex'
-    with open(size_table_filename, 'w') as convert_file:
-        convert_file.write(pd.DataFrame(data_to_tex, index=[0]).to_latex(index=False))
+#     # also save latex table for size data separate
+#     size_table_filename = args.name + '_extradata.tex'
+#     with open(size_table_filename, 'w') as convert_file:
+#         convert_file.write(pd.DataFrame(data_to_tex, index=[0]).to_latex(index=False))
