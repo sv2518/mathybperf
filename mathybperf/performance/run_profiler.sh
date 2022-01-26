@@ -19,22 +19,22 @@ ls
 # mode of the script, options are:
 # do we want to generate a tex from this?
 # do we want to generate new results?
-ARG1="$2"
-ARG2="$3"
-ARG3="$3"
-if [[ "$ARG1" == "--nores" || "$ARG2" == "--nores" || "$ARG3" == "--nores" ]]
+ARG1="$3"
+ARG2="$4"
+ARG3="$5"
+if [[ "$ARG3" == "--nores" || "$ARG4" == "--nores" || "$ARG5" == "--nores" ]]
 then
     DORES=false
 else
     DORES=true
 fi
-if [[ "$ARG1" == "--tex" || "$ARG2" == "--tex" || "$ARG3" == "--tex" ]]
+if [[ "$ARG3" == "--tex" || "$ARG4" == "--tex" || "$ARG5" == "--tex" ]]
 then
     DOTEX=true
 else
     DOTEX=false
 fi
-if [[ "$ARG1" == "--verification" || "$ARG2" == "--verification" || "$ARG3" == "--verification" ]]
+if [[ "$ARG3" == "--verification" || "$ARG4" == "--verification" || "$ARG5" == "--verification" ]]
 then
     VERIFICATION="--verification"
     # For verification of the performance runs we need to
@@ -45,6 +45,7 @@ then
     # but for verification we don't care for performance.
     # Hence no flamegraphs will be generated.
     FLAME=false
+    ORDERS=("$2")
 fi
 
 
