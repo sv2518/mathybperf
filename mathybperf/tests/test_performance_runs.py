@@ -40,9 +40,7 @@ def run_profiler(name, degree):
     gc.collect()
     gc.collect()
     gc.collect()
-    proc = subprocess.run(["cd ./mathybperf/performance ; /bin/bash ./run_profiler.sh "+name+" "+str(degree)+" --verification"],
-                           shell=True,
-                           close_fds=True)
+    proc = os.system("cd ./mathybperf/performance ; /bin/bash ./run_profiler.sh "+name+" "+str(degree)+" --verification")
     if proc.returncode!=0:
         error_file = base_path+name+'/verification.err'
         # print("Current directory is: ", os.system('pwd'))
@@ -66,4 +64,5 @@ def run_profiler(name, degree):
 
 @pytest.mark.parametrize("name, degree", setups)
 def test_setups_mixed_poisson(name, degree):
+    os.system('firedrake-clean')
     run_profiler(name, degree)
