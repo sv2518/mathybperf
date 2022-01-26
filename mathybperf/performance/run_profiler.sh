@@ -22,19 +22,19 @@ ls
 ARG1="$3"
 ARG2="$4"
 ARG3="$5"
-if [[ "$ARG3" == "--nores" || "$ARG4" == "--nores" || "$ARG5" == "--nores" ]]
+if [[ "$ARG1" == "--nores" || "$ARG2" == "--nores" || "$ARG3" == "--nores" ]]
 then
     DORES=false
 else
     DORES=true
 fi
-if [[ "$ARG3" == "--tex" || "$ARG4" == "--tex" || "$ARG5" == "--tex" ]]
+if [[ "$ARG1" == "--tex" || "$ARG2" == "--tex" || "$ARG3" == "--tex" ]]
 then
     DOTEX=true
 else
     DOTEX=false
 fi
-if [[ "$ARG3" == "--verification" || "$ARG4" == "--verification" || "$ARG5" == "--verification" ]]
+if [[ "$ARG1" == "--verification" || "$ARG2" == "--verification" || "$ARG3" == "--verification" ]]
 then
     VERIFICATION="--verification"
     # For verification of the performance runs we need to

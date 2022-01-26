@@ -39,7 +39,7 @@ def run_profiler(name, degree):
     gc.collect()
     gc.collect()
     gc.collect()
-    proc = subprocess.run(["cd ./mathybperf/performance ; /bin/bash ./run_profiler.sh "+name+" --verification "+str(degree)],
+    proc = subprocess.run(["cd ./mathybperf/performance ; /bin/bash ./run_profiler.sh "+name+" "+str(degree)+" --verification"],
                            shell=True,
                            close_fds=True)
     if proc.returncode!=0:
