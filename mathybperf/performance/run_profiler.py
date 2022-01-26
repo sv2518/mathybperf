@@ -60,6 +60,7 @@ with PETSc.Log.Stage(petsc_stage_name):
                         +"\n\nThe setup finished with the following status.\n\n"
                         +str(VERIFY_STATUS))
             convert_file.write(output)
+            PETSc.Sys.Print("failed with \n", str(e))
             gc.collect()
         sys.exit(error)
     internal_timedata_cold = time_data.get_internal_timedata(warmup, mesh.comm)
