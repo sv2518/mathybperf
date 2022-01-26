@@ -64,5 +64,5 @@ def run_profiler(name, degree):
 
 @pytest.mark.parametrize("name, degree", setups)
 def test_setups_mixed_poisson(name, degree):
-    os.system('firedrake-clean')
+    # os.system('firedrake-clean')
     run_profiler(name, degree)
