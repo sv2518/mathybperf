@@ -36,7 +36,7 @@ else
 fi
 if [[ "$ARG1" == "--verification" || "$ARG2" == "--verification" || "$ARG3" == "--verification" ]]
 then
-    VERIFICATION="--verification"
+    VERIFICATION=--verification
     # For verification of the performance runs we need to
     # project the exact solutions to get some errors.
     # It's sufficient to get error in one state (we test the cool state).

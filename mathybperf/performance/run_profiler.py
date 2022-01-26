@@ -99,6 +99,7 @@ if args.projectexactsol:
     data_to_tex.update(accuracy_data)
 
 if not args.verification:
+    PETSc.Sys.Print("Writing some files...")
     # write out data to .csv
     datafile = pd.DataFrame(tas_data)
     datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="w",header=True)
