@@ -18,7 +18,7 @@ gc.collect()
 parameters["pyop2_options"]["lazy_evaluation"] = False
 
 args = fetch_setup()
-PETSc.Sys.Print("Args: ", args+"\n")
+PETSc.Sys.Print("Args: ", str(args)+"\n")
 # Penalty is set the same for all runs
 penalty = lambda p, d: (p+1)**3
 warmup = "warm_up" if args.clean else "warmed_up"
