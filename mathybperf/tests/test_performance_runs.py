@@ -27,7 +27,7 @@ def setup_degrees(setups):
 
 base_path = './mathybperf/performance/verification/results/mixed_poisson/pplus1pow3/'
 setups = setup_names()
-setups = setup_degrees(["case4"])
+setups = setup_degrees(setups)
 
 MAX_AS = 4000 * 1024 * 1024  # 4 GB
 def set_limits():
