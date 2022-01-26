@@ -12,6 +12,7 @@ def setup_names():
     setup_names = [s[s.rfind("/")+1:s.rfind(".")] for s in setup_list]
     return setup_names
 
+
 def setup_degrees(setups):
     test_setup = []
     for s in setups:
@@ -26,7 +27,7 @@ def setup_degrees(setups):
 
 base_path = './mathybperf/performance/verification/results/mixed_poisson/pplus1pow3/'
 setups = setup_names()
-setups = setup_degrees(setups)
+setups = setup_degrees(["case4"])
 
 MAX_AS = 4000 * 1024 * 1024  # 4 GB
 def set_limits():
@@ -43,10 +44,10 @@ def run_profiler(name, degree):
                            shell=True,
                            close_fds=True)
     if proc.returncode!=0:
-        error_file = base_path+name+'/verification.err'
-        print("Current directory is: ", os.system('pwd'))
-        with open(error_file, 'r') as myfile:
-            error_message = myfile.read()
+        # error_file = base_path+name+'/verification.err'
+        # print("Current directory is: ", os.system('pwd'))
+        # with open(error_file, 'r') as myfile:
+        #     error_message = myfile.read()
         log_files = glob.glob(base_path+name+'/*/*/*/*log.txt')
         log_file_curr = sorted(log_files, key=os.path.getmtime)[-1]
         log_file_old = sorted(log_files, key=os.path.getmtime)[-2]
