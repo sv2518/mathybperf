@@ -6,19 +6,14 @@ from mathybperf.utils.solver_utils import SolverBag
 from mathybperf.utils.setup_utils import fetch_setup
 from firedrake.petsc import OptionsManager
 import importlib
-import sys, traceback, os
-import gc
-
-gc.collect()
+import sys, traceback
 
 ######################################
 ##############   MAIN   ##############
 ######################################
 
-parameters["pyop2_options"]["lazy_evaluation"] = False
-
 args = fetch_setup()
-PETSc.Sys.Print("Args: ", str(args)+"\n")
+PETSc.Sys.Print("Read args from shell script: ", str(args)+"\n")
 # Penalty is set the same for all runs
 penalty = lambda p, d: (p+1)**3
 warmup = "warm_up" if args.clean else "warmed_up"
@@ -49,21 +44,16 @@ with PETSc.Log.Stage(petsc_stage_name):
         quad_degree, (w, w2), (w_t, w_t_exact), mesh = problem(problem_bag, solver_bag,
                                                                verification=args.verification,
                                                                project=args.projectexactsol)
-        VERIFY_STATUS = "success"
     except Exception as e:
         VERIFY_STATUS = traceback.format_exc()
         error = int(not VERIFY_STATUS=="success")
-        pid = os.getpid()
-        err_filename = args.name[:args.name.rfind("trafo")] + str(pid) + '_verification.err'
-        with open(err_filename, 'w') as convert_file:
-            output =("The following setup was run last.\n"
+        PETSc.Sys.Print("\n\n\n-----FAILED WITH AN ERROR ----"
+                        + "\n\n The error message is: " + str(e)
+                        + "\n\nThe following setup was run last.\n"
                         + str(problem_bag) + "\nSolver parameters:\n"
                         + str(json.dumps(parameters, indent=4))
-                        +"\n\nThe setup finished with the following status.\n\n"
-                        +str(VERIFY_STATUS))
-            convert_file.write(output)
-            PETSc.Sys.Print("failed with \n", str(e))
-            gc.collect()
+                        + "\n\nThe setup finished with the following status.\n\n"
+                        + str(VERIFY_STATUS))
         sys.exit(error)
     internal_timedata_cold = time_data.get_internal_timedata(warmup, mesh.comm)
 tas_data.update(internal_timedata_cold)
@@ -99,23 +89,22 @@ if args.projectexactsol:
     tas_data.update(accuracy_data)
     data_to_tex.update(accuracy_data)
 
-# if not args.verification:
-#     PETSc.Sys.Print("Writing some files...")
-#     # write out data to .csv
-#     datafile = pd.DataFrame(tas_data)
-#     datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="w",header=True)
+if not args.verification:
+    # write out data to .csv
+    datafile = pd.DataFrame(tas_data)
+    datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="w",header=True)
 
-#     # also remember which parameter sets we used for the solver
-#     paramsfilename = args.name + '_parameters.txt'
-#     with open(paramsfilename, 'w') as convert_file:
-#         convert_file.write(json.dumps(parameters, indent=4))
+    # also remember which parameter sets we used for the solver
+    paramsfilename = args.name + '_parameters.txt'
+    with open(paramsfilename, 'w') as convert_file:
+        convert_file.write(json.dumps(parameters, indent=4))
 
-#     # also save latex table for setup data separate
-#     setup_filename = args.name + '_setup.tex'
-#     with open(setup_filename, 'w') as convert_file:
-#         convert_file.write(problem_bag.latex())
+    # also save latex table for setup data separate
+    setup_filename = args.name + '_setup.tex'
+    with open(setup_filename, 'w') as convert_file:
+        convert_file.write(problem_bag.latex())
 
-#     # also save latex table for size data separate
-#     size_table_filename = args.name + '_extradata.tex'
-#     with open(size_table_filename, 'w') as convert_file:
-#         convert_file.write(pd.DataFrame(data_to_tex, index=[0]).to_latex(index=False))
+    # also save latex table for size data separate
+    size_table_filename = args.name + '_extradata.tex'
+    with open(size_table_filename, 'w') as convert_file:
+        convert_file.write(pd.DataFrame(data_to_tex, index=[0]).to_latex(index=False))

@@ -94,7 +94,10 @@ then
                     PARAMS=$BASEP
                     NNAME=$NAME$PARAMS
                     FNAME=$FLAMENAME$PARAMS
-                    # firedrake-clean
+                    if ! [ "$VERIFICATION" == "--verification" ]
+                    then
+                        firedrake-clean
+                    fi
                     NNAME+='_warm_up'
                     FNAME+='_warm_up'
                     reftochap='\\caseRT'$((P+1))"DG"$P
@@ -105,7 +108,7 @@ then
                     then
                         FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
                     fi
-                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --clean  $PROJECTEXACTSOL $VERIFICATION #> $NNAME"_log.txt"
+                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --clean  $PROJECTEXACTSOL $VERIFICATION > $NNAME"_log.txt"
                     retcode=$?
 
                     if ! [ "$VERIFICATION" == "--verification" ]
@@ -163,7 +166,10 @@ then
                     PARAMS=$PERFORMP
                     NNAME=$NAME$PARAMS
                     FNAME=$FLAMENAME$PARAMS
-                    # firedrake-clean
+                    if ! [ "$VERIFICATION" == "--verification" ]
+                    then
+                        firedrake-clean
+                    fi
                     NNAME+='_warm_up'
                     FNAME+='_warm_up'
                     reftochap='\\caseRT'$((P+1))"DG"$P
@@ -173,7 +179,7 @@ then
                     then
                         FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
                     fi
-                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --clean $PROJECTEXACTSOL $VERIFICATION #> $NNAME"_log.txt"
+                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --clean $PROJECTEXACTSOL $VERIFICATION > $NNAME"_log.txt"
                     retcode=$?
 
                     if ! [ "$VERIFICATION" == "--verification" ]

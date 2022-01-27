@@ -1,9 +1,6 @@
 import pytest
-import subprocess
 import glob
 import os
-import gc
-import resource
 import re
 
 
@@ -29,40 +26,21 @@ base_path = './mathybperf/performance/verification/results/mixed_poisson/pplus1p
 setups = setup_names()
 setups = setup_degrees(setups)
 
-MAX_AS = 4000 * 1024 * 1024  # 4 GB
-def set_limits():
-    # The maximum area (in bytes) of address space which may be taken by the process.
-    resource.setrlimit(resource.RLIMIT_AS, (MAX_AS, resource.RLIM_INFINITY))
-    # resource.setrlimit(resource.RLIMIT_SWAP, (MAX_AS, resource.RLIM_INFINITY))
-    resource.setrlimit(resource.RLIMIT_DATA, (MAX_AS, resource.RLIM_INFINITY))
-
 def run_profiler(name, degree):
-    gc.collect()
-    gc.collect()
-    gc.collect()
     proc = os.system("cd ./mathybperf/performance ; /bin/bash ./run_profiler.sh "+name+" "+str(degree)+" --verification")
-    if proc!=0:
-        error_file = base_path+name+'/verification.err'
-        # print("Current directory is: ", os.system('pwd'))
-        # with open(error_file, 'r') as myfile:
-        #     error_message = myfile.read()
-        # log_files = glob.glob(base_path+name+'/*/*/*/*log.txt')
-        # log_file_curr = sorted(log_files, key=os.path.getmtime)[-1]
-        # log_file_old = sorted(log_files, key=os.path.getmtime)[-2]
-        # print("\n\nThe current log file contains:\n")
-        # with open(log_file_curr, 'r') as myfile:
-        #     print(myfile.read())
-        # print("\n\nThe previous log file contains:\n")
-        # with open(log_file_old, 'r') as myfile:
-        #     print(myfile.read())
-        error_message ="failed"
-    else:
-        error_file = "empty"
-        error_message="empty"
-    assert proc==0, "Case "+name+" failed. Error message in file "+str(error_file)+": \n"+error_message
+    if proc != 0:
+        log_files = glob.glob(base_path+name+'/*/*/*/*log.txt')
+        log_file_curr = sorted(log_files, key=os.path.getmtime)[-1]
+        log_file_old = sorted(log_files, key=os.path.getmtime)[-2]
+        print("\n\nThe current log file contains:\n")
+        with open(log_file_curr, 'r') as myfile:
+            print(myfile.read())
+        print("\n\nThe previous log file contains:\n")
+        with open(log_file_old, 'r') as myfile:
+            print(myfile.read())
+    assert proc==0, "Case "+name+" failed. For more information see " + str(log_file_curr)
 
 
 @pytest.mark.parametrize("name, degree", setups)
 def test_setups_mixed_poisson(name, degree):
-    # os.system('firedrake-clean')
     run_profiler(name, degree)
