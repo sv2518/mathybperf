@@ -13,4 +13,7 @@ CMD . ./firedrake/bin/activate \
 && cd mathybperf \
 && python -m pip install -e . \
 && python $(which firedrake-clean) \
-&& python -m pytest -n 12 -v ./mathybperf/mathybperf/tests
+&& python -m pytest -n auto -v mathybperf/tests
+# && sudo apt-get update \
+# && sudo apt-get install valgrind -y\
+# && valgrind -m pytest -v mathybperf/tests
