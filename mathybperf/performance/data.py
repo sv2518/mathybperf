@@ -36,22 +36,20 @@ class TimeData(object):
         overall = self.get_time("perfsolve")
         PETSc.Log.Stage(stage).pop()
 
-        internal_timedata.update({
-                "snes_time_upd": self.reduce(snes, comm),
-                "ksp_time_upd": self.reduce(ksp, comm),
-                "pc_setup_time_upd": self.reduce(pcsetup, comm),
-                "pc_apply_time_upd": self.reduce(pcapply, comm),
-                "jac_eval_time_upd": self.reduce(jac_eval, comm),
-                "res_eval_time_upd": self.reduce(residual, comm),
-                "HybridInit": self.reduce(hybridinit, comm),
-                "HybridAssembly": self.reduce(hybridassembly, comm),
-                "HybridUpdate": self.reduce(hybridupdate, comm),
-                "HybridRhs": self.reduce(elim, comm),
-                "HybridRecover": self.reduce(full_recon, comm),
-                "HybridTraceSolve": self.reduce(trace, comm),
-                "HybridTotal": hybridinit+hybridupdate+elim+full_recon+trace,
-                "overall": self.reduce(overall)
-                })
+        internal_timedata.update({"snes_time_upd": self.reduce(snes, comm),
+                                  "ksp_time_upd": self.reduce(ksp, comm),
+                                  "pc_setup_time_upd": self.reduce(pcsetup, comm),
+                                  "pc_apply_time_upd": self.reduce(pcapply, comm),
+                                  "jac_eval_time_upd": self.reduce(jac_eval, comm),
+                                  "res_eval_time_upd": self.reduce(residual, comm),
+                                  "HybridInit": self.reduce(hybridinit, comm),
+                                  "HybridAssembly": self.reduce(hybridassembly, comm),
+                                  "HybridUpdate": self.reduce(hybridupdate, comm),
+                                  "HybridRhs": self.reduce(elim, comm),
+                                  "HybridRecover": self.reduce(full_recon, comm),
+                                  "HybridTraceSolve": self.reduce(trace, comm),
+                                  "HybridTotal": hybridinit+hybridupdate+elim+full_recon+trace,
+                                  "overall": self.reduce(overall)})
 
         return internal_timedata
 

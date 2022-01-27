@@ -23,14 +23,12 @@ def mixed_poisson(W, add_to_quad_degree, exact):
     a = form*int_domain
     l = -f*v
     L = l*int_domain
-    repr = (
-            f"\nVARIATIONAL PROBLEM\n"
+    repr = (f"\nVARIATIONAL PROBLEM\n"
             f"Trial functions: {sigma} and {u}\n"
             f"Test functions: {tau} and {v}\n"
             f"Lhs: {a}\n"
             f"Rhs: {L}\n"
-            f"Quadrature degree: {quadrature_degree}\n"
-           )
+            f"Quadrature degree: {quadrature_degree}\n")
     var_problem_info = {"Trial functions": f"{TrialFunction(W)}",
                         "Test functions": f"{TestFunction(W)}",
                         "Lhs": f"{form}",

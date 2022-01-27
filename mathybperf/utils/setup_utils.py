@@ -1,8 +1,9 @@
 import argparse
 
+
 def fetch_setup():
     """GENERAL SETUP
-       Information are fetched from shell script run_profiler.sh 
+       Information are fetched from shell script run_profiler.sh
     """
 
     parser = argparse.ArgumentParser(description='Fetch setup from shell script.')
@@ -29,13 +30,13 @@ def fetch_setup():
     parser.add_argument('exact_sol_type', type=str,
                         help="""Type of the exact solution.
                                 Can be quadratic or exponential at the moment.""")
-    parser.add_argument('--add_to_quad_degree', type=int, nargs="+", default=[0,0],
+    parser.add_argument('--add_to_quad_degree', type=int, nargs="+", default=[0, 0],
                         help='In- or decrease the quadrature degree by a tuple.')
-    parser.add_argument('--projectexactsol',  action="store_true",
+    parser.add_argument('--projectexactsol', action="store_true",
                         help='Should the exact solution on the trace be projected so that we know the error?')
     parser.add_argument('-log_view', type=str,
                         help="""Flamegraph?""")
     parser.add_argument('--clean', action="store_true", help='Clean firdrake caches?')
-    parser.add_argument('--verification', action="store_true",  help='Should errors on results be checked?')
+    parser.add_argument('--verification', action="store_true", help='Should errors on results be checked?')
 
     return parser.parse_args()

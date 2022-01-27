@@ -6,7 +6,8 @@ from mathybperf.utils.solver_utils import SolverBag
 from mathybperf.utils.setup_utils import fetch_setup
 from firedrake.petsc import OptionsManager
 import importlib
-import sys, traceback
+import sys
+import traceback
 
 ######################################
 ##############   MAIN   ##############
@@ -46,7 +47,7 @@ with PETSc.Log.Stage(petsc_stage_name):
                                                                project=args.projectexactsol)
     except Exception as e:
         VERIFY_STATUS = traceback.format_exc()
-        error = int(not VERIFY_STATUS=="success")
+        error = int(not VERIFY_STATUS == "success")
         PETSc.Sys.Print("\n\n\n-----FAILED WITH AN ERROR ----"
                         + "\n\n The error message is: " + str(e)
                         + "\n\nThe following setup was run last.\n"
@@ -65,7 +66,7 @@ tas_data.update(external_timedata)
 # add further information
 # setup information
 tas_data.update(vars(args))
-data_to_tex={"Local tensor shape": str(problem_bag.total_local_shape)}
+data_to_tex = {"Local tensor shape": str(problem_bag.total_local_shape)}
 
 # gather dofs
 size_data = SizeData(w).get_split_data()
@@ -92,7 +93,8 @@ if args.projectexactsol:
 if not args.verification:
     # write out data to .csv
     datafile = pd.DataFrame(tas_data)
-    datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",index=False,mode="w",header=True)
+    datafile.to_csv(args.name+f"_order{args.p}_cells{args.c}.csv",
+                    index=False, mode="w", header=True)
 
     # also remember which parameter sets we used for the solver
     paramsfilename = args.name + '_parameters.txt'
@@ -107,4 +109,5 @@ if not args.verification:
     # also save latex table for size data separate
     size_table_filename = args.name + '_extradata.tex'
     with open(size_table_filename, 'w') as convert_file:
-        convert_file.write(pd.DataFrame(data_to_tex, index=[0]).to_latex(index=False))
+        frame = pd.DataFrame(data_to_tex, index=[0]).to_latex(index=False)
+        convert_file.write(frame)

@@ -1,5 +1,6 @@
 from firedrake import *
 
+
 class SolverBag(object):
 
     def __init__(self, perform_params, baseline_params, gtmg_levels):

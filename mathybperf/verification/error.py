@@ -11,6 +11,7 @@ def check_error(w, w2):
     norm = errornorm(u, u2, norm_type="L2")
     assert np.allclose(u.dat.data, u2.dat.data, rtol=1.e-5), norm
 
+
 def get_errors(w, w2):
     """Returns error in various norms."""
     linf_err_u = max(abs(assemble(w.sub(0) - w2.sub(0)).dat.data))
@@ -26,8 +27,8 @@ def get_errors(w, w2):
             "H1Pres": h1_err_p,
             "HDivVelo": hdiv_err_u}
 
+
 def get_error(w, w2):
-    import matplotlib.pyplot as plt
     linf_err_p = max(abs(assemble(w - w2).dat.data))
     l2_err_p = np.sqrt(np.sum(np.abs(d1 - d2) for d1, d2 in zip(w.dat.data, w2.dat.data)))
     return {"LinfTrace": linf_err_p,
@@ -47,19 +48,20 @@ def check_var_problem(a, L, w):
 def project_trace_solution(T, exact_sol, degree):
     lmbda_t = TrialFunction(T)
     gamma_t = TestFunction(T)
-    a_t = (lmbda_t * gamma_t * ds_t(degree=degree) +
-            lmbda_t * gamma_t * ds_v(degree=degree) +
-            lmbda_t * gamma_t * ds_b(degree=degree) +
-            lmbda_t('+') * gamma_t('+') * dS_h(degree=degree) +
-            lmbda_t('+') * gamma_t('+') * dS_v(degree=degree))
-    l_t = (exact_sol * gamma_t * ds_t(degree=degree) +
-            exact_sol * gamma_t * ds_v(degree=degree) +
-            exact_sol * gamma_t * ds_b(degree=degree) +
-            exact_sol('+') * gamma_t('+') * dS_h(degree=degree) +
-            exact_sol('+') * gamma_t('+') * dS_v(degree=degree))
+    a_t = (lmbda_t * gamma_t * ds_t(degree=degree)
+           + lmbda_t * gamma_t * ds_v(degree=degree)
+           + lmbda_t * gamma_t * ds_b(degree=degree)
+           + lmbda_t('+') * gamma_t('+') * dS_h(degree=degree)
+           + lmbda_t('+') * gamma_t('+') * dS_v(degree=degree))
+    l_t = (exact_sol * gamma_t * ds_t(degree=degree)
+           + exact_sol * gamma_t * ds_v(degree=degree)
+           + exact_sol * gamma_t * ds_b(degree=degree)
+           + exact_sol('+') * gamma_t('+') * dS_h(degree=degree)
+           + exact_sol('+') * gamma_t('+') * dS_v(degree=degree))
 
     w_t_exact = Function(T)
     vpb_t = LinearVariationalProblem(lhs(a_t-l_t), rhs(a_t-l_t), w_t_exact)
-    solver_t = LinearVariationalSolver(vpb_t, solver_parameters={"ksp_type": "cg", "ksp_rtol": 1e-6,"pc_type": "bjacobi", "sub_pc_type": "icc"})
+    params = {"ksp_type": "cg", "ksp_rtol": 1e-6, "pc_type": "bjacobi", "sub_pc_type": "icc"}
+    solver_t = LinearVariationalSolver(vpb_t, solver_parameters=params)
     solver_t.solve()
     return w_t_exact

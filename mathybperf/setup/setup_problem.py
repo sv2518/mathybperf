@@ -8,6 +8,7 @@ from firedrake import *
 import ufl
 from math import ceil
 
+
 def problem(problem_bag, solver_bag, verification, new=True, project=False):
     reset = not problem_bag.mesh or new  # setup new problem
     if reset:
@@ -20,33 +21,33 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
     if reset:
         problem_bag.space = RT_DQ_3D(problem_bag.order, problem_bag.mesh)
         problem_bag.var_problem, problem_bag.var_problem_repr, problem_bag.var_problem_info = mixed_poisson(problem_bag.space[0],
-                                                                              problem_bag.add_to_quad_degree,
-                                                                              exact_sol)
-    
+                                                                                                            problem_bag.add_to_quad_degree,
+                                                                                                            exact_sol)
+
     # solve problem
     a, L, quadrature_degree = problem_bag.var_problem
     w, solver = solve_with_params(problem_bag, solver_bag)
 
     # compare iterative solution to reference solution
     w_t = solver.snes.ksp.pc.getPythonContext().trace_solution
-    problem_bag.total_local_shape=solver.snes.ksp.pc.getPythonContext().schur_builder.total_local_shape
+    problem_bag.total_local_shape = solver.snes.ksp.pc.getPythonContext().schur_builder.total_local_shape
     w_t_exact = None
     w2 = None
     if project:
         if problem_bag.exact_sol_type == "quadratic":
-            fc1={'quadrature_degree': 4+ceil((1+problem_bag.order+1+3)/2)}
-            fc2={'quadrature_degree': 4+ceil((2+problem_bag.order+1)/2)}
+            fc1 = {'quadrature_degree': 4+ceil((1+problem_bag.order+1+3)/2)}
+            fc2 = {'quadrature_degree': 4+ceil((2+problem_bag.order+1)/2)}
         elif problem_bag.exact_sol_type == "exponential":
             d = 9+problem_bag.order
-            fc1={'quadrature_degree': d+1}
-            fc2={'quadrature_degree': d}
+            fc1 = {'quadrature_degree': d+1}
+            fc2 = {'quadrature_degree': d}
         else:
             d = 5+problem_bag.order
-            fc1={}
-            fc2={}
+            fc1 = {}
+            fc2 = {}
         w2 = Function(problem_bag.space[0])
         w2.sub(0).project(ufl.grad(exact_sol), solver_parameters={'ksp_rtol': 1.e-6}, form_compiler_parameters=fc1, use_slate_for_inverse=False)
-        w2.sub(1).project(exact_sol, solver_parameters={'ksp_rtol': 1.e-6},  form_compiler_parameters=fc2, use_slate_for_inverse=False)
+        w2.sub(1).project(exact_sol, solver_parameters={'ksp_rtol': 1.e-6}, form_compiler_parameters=fc2, use_slate_for_inverse=False)
         w_t_exact = project_trace_solution(w_t.function_space(), exact_sol, degree=fc2['quadrature_degree'])
 
     # verification of error
