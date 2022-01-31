@@ -59,10 +59,6 @@ with PETSc.Log.Stage(petsc_stage_name):
     internal_timedata_cold = time_data.get_internal_timedata(warmup, mesh.comm)
 tas_data.update(internal_timedata_cold)
 
-# add general times spend on different parts
-external_timedata = time_data.get_external_timedata(petsc_stage_name)
-tas_data.update(external_timedata)
-
 # add further information
 # setup information
 tas_data.update(vars(args))
