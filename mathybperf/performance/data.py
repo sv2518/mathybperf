@@ -49,7 +49,7 @@ class TimeData(object):
                                   "HybridRecover": self.reduce(full_recon, comm),
                                   "HybridTraceSolve": self.reduce(trace, comm),
                                   "HybridTotal": hybridinit+hybridupdate+elim+full_recon+trace,
-                                  "overall": self.reduce(overall)})
+                                  "overall": self.reduce(overall, comm)})
 
         return internal_timedata
 
