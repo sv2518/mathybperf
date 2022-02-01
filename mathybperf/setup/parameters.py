@@ -166,7 +166,7 @@ gtmg_fully_matfree_params = {'snes_type': 'ksponly',
                                                'ksp_view': None}}
 
 
-gtmg_fully_matfree_params_fs1_cg_jacobi = {'snes_type': 'ksponly',
+gtmg_fully_matfree_params_fs0_cg_jacobi = {'snes_type': 'ksponly',
                                            'mat_type': 'matfree',
                                            'ksp_type': 'preonly',
                                            'pc_type': 'python',
