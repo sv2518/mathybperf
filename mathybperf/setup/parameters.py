@@ -165,6 +165,24 @@ gtmg_fully_matfree_params = {'snes_type': 'ksponly',
                                                'gt': gt_params_fully_matfree,
                                                'ksp_view': None}}
 
+gtmg_fully_matfree_params_maxitscg = {'snes_type': 'ksponly',
+                                      'mat_type': 'matfree',
+                                      'ksp_type': 'preonly',
+                                      'pc_type': 'python',
+                                      'pc_python_type': 'firedrake.HybridizationPC',
+                                      'hybridization': {'ksp_type': 'cg',
+                                                        'pc_type': 'python',
+                                                        'mat_type': 'matfree',
+                                                        'ksp_rtol': 1.e-8,
+                                                        'ksp_max_it': 10,
+                                                        'localsolve': {'ksp_type': 'preonly',
+                                                                       'mat_type': 'matfree',  # local-matfree!
+                                                                       'pc_type': 'fieldsplit',
+                                                                       'pc_fieldsplit_type': 'schur'},
+                                                        'pc_python_type': 'firedrake.GTMGPC',
+                                                        'gt': gt_params_fully_matfree,
+                                                        'ksp_view': None,
+                                                        'ksp_monitor': None}}
 
 gtmg_fully_matfree_params_fs0_cg_jacobi = {'snes_type': 'ksponly',
                                            'mat_type': 'matfree',
