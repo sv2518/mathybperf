@@ -92,6 +92,19 @@ gtmg_matexpl_params = {'mat_type': 'matfree',
                                                 'mg_coarse': mgmatexp},
                                          'ksp_view': None}}
 
+gtmg_matexpl_params_maxitscg = {'mat_type': 'matfree',
+                                'ksp_type': 'preonly',
+                                'pc_type': 'python',
+                                'pc_python_type': 'firedrake.HybridizationPC',
+                                'hybridization': {'ksp_type': 'cg',
+                                                  'pc_type': 'python',
+                                                  'ksp_rtol': 1e-8,
+                                                  'ksp_max_it': 10,
+                                                  'pc_python_type': 'firedrake.GTMGPC',
+                                                  'gt': {'mg_levels': cheby_jacobi,
+                                                         'mg_coarse': mgmatexp},
+                                                  'ksp_view': None}}
+
 # These are the tests used for Jacks GTMG test in the Firedrake test suite
 # but the Schur complement in the trace solve is nested
 gtmg_matexpl_nested_schur_params = {'mat_type': 'matfree',
