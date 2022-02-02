@@ -15,4 +15,4 @@ export BASEP='gtmg_matexpl_params'
 export PERFORMP='gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_jacobi'
 export SOLTYPE='quadratic'
 export PROJECTEXACTSOL="" #--projectexactsol
-export CASE='/case4/'
+export CASE='/case6/'
