@@ -19,7 +19,11 @@ def solve_with_params(problem_bag, solver_bag):
                                      solver_parameters=solver_bag.perform_params,
                                      appctx=appctx)
     with PETSc.Log.Event("perfsolve"):
-        solver.solve()
+        PETSc.Sys.pushErrorHandler("ignore")
+        try:
+            solver.solve()
+        except Exception as e:
+            raise e
     return w, solver
 
 
