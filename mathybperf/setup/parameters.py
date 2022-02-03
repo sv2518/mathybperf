@@ -157,7 +157,8 @@ gtmg_global_matfree_nested_schur_params = {'snes_type': 'ksponly',
                                                              'ksp_rtol': 1.e-8,
                                                              'pc_python_type': 'firedrake.GTMGPC',
                                                              'gt': gt_params_global_matfree,
-                                                             'ksp_view': None}}
+                                                             'ksp_view': None,
+                                                             'ksp_monitor': None}}
 
 # Fully matrix-free GTMG
 # We need nested schur for local matfree
