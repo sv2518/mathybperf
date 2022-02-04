@@ -15,7 +15,8 @@ mgmatfree_mtf = {'snes_type': 'ksponly',
                  # 'mg_coarse_assembled_pc_mat_mumps_icntl_14': 200,
                  'mg_levels_ksp_type': 'chebyshev',
                  'mg_levels_ksp_max_it': 3,
-                 'mg_levels_pc_type': 'none'}
+                 'mg_levels_pc_type': 'none',
+                 'mg_levels_ksp_monitor': None}
 
 mgmatfree_mtx = {'snes_type': 'ksponly',
                  'ksp_type': 'preonly',
@@ -30,7 +31,8 @@ mgmatfree_mtx = {'snes_type': 'ksponly',
                  'mg_coarse_assembled_ksp_rtol': 1.e-10,
                  'mg_levels_ksp_type': 'chebyshev',
                  'mg_levels_ksp_max_it': 3,
-                 'mg_levels_pc_type': 'none'}
+                 'mg_levels_pc_type': 'none',
+                 'mg_levels_ksp_monitor': None}
 
 mgmatexp = {'ksp_type': 'preonly',
             'pc_type': 'mg',
@@ -40,15 +42,18 @@ mgmatexp = {'ksp_type': 'preonly',
                           'pc_factor_mat_solver_type': 'superlu_dist'},
             'mg_levels': {'ksp_type': 'chebyshev',
                           'pc_type': 'jacobi',
-                          'ksp_max_it': 3}}
+                          'ksp_max_it': 3,
+                          'ksp_monitor': None}}
 
 # Params for solves on levels
 cheby_jacobi = {'ksp_type': 'chebyshev',
                 'ksp_max_it': 3,
-                'pc_type': 'jacobi'}
+                'pc_type': 'jacobi',
+                'ksp_monitor': None}
 cheby_none = {'ksp_type': 'chebyshev',
               'ksp_max_it': 3,
-              'pc_type': 'none'}
+              'pc_type': 'none',
+              'ksp_monitor': None}
 
 # Params for GTMG
 gt_params_matexp = {'mg_levels': cheby_jacobi,
