@@ -82,7 +82,9 @@ hybridization_global_matfree_cg = {'mat_type': 'matfree',
                                    'hybridization': {'ksp_type': 'cg',
                                                      'pc_type': 'none',
                                                      'ksp_rtol': 1.e-8,
-                                                     'mat_type': 'matfree'}}
+                                                     'mat_type': 'matfree',
+                                                     'ksp_view': None,
+                                                     'ksp_monitor': None}}
 
 # These are the tests used for Jacks GTMG test in the Firedrake test suite
 gtmg_matexpl_params = {'mat_type': 'matfree',
@@ -95,7 +97,8 @@ gtmg_matexpl_params = {'mat_type': 'matfree',
                                          'pc_python_type': 'firedrake.GTMGPC',
                                          'gt': {'mg_levels': cheby_jacobi,
                                                 'mg_coarse': mgmatexp},
-                                         'ksp_view': None}}
+                                         'ksp_view': None,
+                                         'ksp_monitor': None}}
 
 gtmg_matexpl_params_maxitscg = {'mat_type': 'matfree',
                                 'ksp_type': 'preonly',
@@ -108,7 +111,8 @@ gtmg_matexpl_params_maxitscg = {'mat_type': 'matfree',
                                                   'pc_python_type': 'firedrake.GTMGPC',
                                                   'gt': {'mg_levels': cheby_jacobi,
                                                          'mg_coarse': mgmatexp},
-                                                  'ksp_view': None}}
+                                                  'ksp_view': None,
+                                                  'ksp_monitor': None}}
 
 # These are the tests used for Jacks GTMG test in the Firedrake test suite
 # but the Schur complement in the trace solve is nested
@@ -125,7 +129,9 @@ gtmg_matexpl_nested_schur_params = {'mat_type': 'matfree',
                                                                      'pc_fieldsplit_type': 'schur'},
                                                       'pc_python_type': 'firedrake.GTMGPC',
                                                       'gt': {'mg_levels': cheby_jacobi,
-                                                             'mg_coarse': mgmatexp}}}
+                                                             'mg_coarse': mgmatexp}},
+                                                      'ksp_view': None,
+                                                      'ksp_monitor': None}
 
 # These are the tests used for Jacks GTMG test in the Firedrake test suite
 # with globally matrix-free solves on the levels
@@ -141,7 +147,8 @@ gtmg_global_matfree_params = {'snes_type': 'ksponly',
                                                 'pc_python_type': 'firedrake.GTMGPC',
                                                 'ksp_rtol': 1.e-8,
                                                 'gt': gt_params_global_matfree,
-                                                'ksp_view': None}}
+                                                'ksp_view': None,
+                                                'ksp_monitor': None}}
 
 # These are the tests used for Jacks GTMG test in the Firedrake test suite
 # with globally matrix-free solves on the levels and a nesting of schur complements on the trace solve
@@ -182,7 +189,8 @@ gtmg_fully_matfree_params = {'snes_type': 'ksponly',
                                                               'pc_fieldsplit_type': 'schur'},
                                                'pc_python_type': 'firedrake.GTMGPC',
                                                'gt': gt_params_fully_matfree,
-                                               'ksp_view': None}}
+                                               'ksp_view': None,
+                                               'ksp_monitor': None}}
 
 gtmg_fully_matfree_params_maxitscg = {'snes_type': 'ksponly',
                                       'mat_type': 'matfree',
@@ -221,7 +229,26 @@ gtmg_fully_matfree_params_fs0_cg_jacobi = {'snes_type': 'ksponly',
                                                                                              'pc_type': 'jacobi'}},
                                                              'pc_python_type': 'firedrake.GTMGPC',
                                                              'gt': gt_params_fully_matfree,
-                                                             'ksp_view': None}}
+                                                             'ksp_view': None,
+                                                             'ksp_monitor': None}}
+
+# class DGLaplacian(AuxiliaryOperatorPC):
+#     def form(self, pc, u, v):
+#         W = u.function_space()
+#         n = FacetNormal(W.mesh())
+#         alpha = Constant(3**2)
+#         gamma = Constant(4**2)
+#         h = CellVolume(W.mesh())/FacetArea(W.mesh())
+#         h_avg = (h('+') + h('-'))/2
+#         a_dg = -(inner(grad(u), grad(v))*dx
+#                  - inner(jump(u, n), avg(grad(v)))*dS
+#                  - inner(avg(grad(u)), jump(v, n), )*dS
+#                  + alpha/h_avg * inner(jump(u, n), jump(v, n))*dS
+#                  - inner(u*n, grad(v))*ds
+#                  - inner(grad(u), v*n)*ds
+#                  + (gamma/h)*inner(u, v)*ds)
+#         bcs = None
+#         return (a_dg, bcs)
 
 gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_jacobi = {'snes_type': 'ksponly',
                                                          'mat_type': 'matfree',
@@ -242,4 +269,5 @@ gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_jacobi = {'snes_type': 'ksponly',
                                                                                                            'pc_type': 'jacobi'}},
                                                                            'pc_python_type': 'firedrake.GTMGPC',
                                                                            'gt': gt_params_fully_matfree,
-                                                                           'ksp_view': None}}
+                                                                           'ksp_view': None,
+                                                                           'ksp_monitor': None}}
