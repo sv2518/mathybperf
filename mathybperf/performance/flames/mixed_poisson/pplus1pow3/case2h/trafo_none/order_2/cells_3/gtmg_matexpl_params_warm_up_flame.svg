@@ -1,0 +1,992 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="395" onload="init(evt)" viewBox="0 0 1200 395" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:13px; fill:rgb(0,0,0); }
+	#search, #ignorecase { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:18px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching, currentSearchTerm, ignorecase, ignorecaseBtn;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		ignorecaseBtn = document.getElementById("ignorecase");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+		currentSearchTerm = null;
+
+		// use GET parameters to restore a flamegraphs state.
+		var params = get_params();
+		if (params.x && params.y)
+			zoom(find_group(document.querySelector('[x="' + params.x + '"][y="' + params.y + '"]')));
+                if (params.s) search(params.s);
+	}
+
+	// event listeners
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom();
+			zoom(target);
+			if (!document.querySelector('.parent')) {
+				clearzoom();
+				return;
+			}
+
+			// set parameters for zoom state
+			var el = target.querySelector("rect");
+			if (el && el.attributes && el.attributes.y && el.attributes._orig_x) {
+				var params = get_params()
+				params.x = el.attributes._orig_x.value;
+				params.y = el.attributes.y.value;
+				history.replaceState(null, null, parse_params(params));
+			}
+		}
+		else if (e.target.id == "unzoom") clearzoom();
+		else if (e.target.id == "search") search_prompt();
+		else if (e.target.id == "ignorecase") toggle_ignorecase();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	// ctrl-I to toggle case-sensitive search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+		else if (e.ctrlKey && e.keyCode === 73) {
+			e.preventDefault();
+			toggle_ignorecase();
+		}
+	}, false)
+
+	// functions
+	function get_params() {
+		var params = {};
+		var paramsarr = window.location.search.substr(1).split('&');
+		for (var i = 0; i < paramsarr.length; ++i) {
+			var tmp = paramsarr[i].split("=");
+			if (!tmp[0] || !tmp[1]) continue;
+			params[tmp[0]]  = decodeURIComponent(tmp[1]);
+		}
+		return params;
+	}
+	function parse_params(params) {
+		var uri = "?";
+		for (var key in params) {
+			uri += key + '=' + encodeURIComponent(params[key]) + '&';
+		}
+		if (uri.slice(-1) == "&")
+			uri = uri.substring(0, uri.length - 1);
+		if (uri == '?')
+			uri = window.location.href.split('?')[0];
+		return uri;
+	}
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 13 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		// Fit in full text width
+		if (/^ *$/.test(txt) || t.getSubStringLength(0, txt.length) < w)
+			return;
+
+		for (var x = txt.length - 2; x > 0; x--) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (1 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+		search();
+	}
+	function unzoom() {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			update_text(el[i]);
+		}
+		search();
+	}
+	function clearzoom() {
+		unzoom();
+
+		// remove zoom state
+		var params = get_params();
+		if (params.x) delete params.x;
+		if (params.y) delete params.y;
+		history.replaceState(null, null, parse_params(params));
+	}
+
+	// search
+	function toggle_ignorecase() {
+		ignorecase = !ignorecase;
+		if (ignorecase) {
+			ignorecaseBtn.classList.add("show");
+		} else {
+			ignorecaseBtn.classList.remove("show");
+		}
+		reset_search();
+		search();
+	}
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+		var params = get_params();
+		delete params.s;
+		history.replaceState(null, null, parse_params(params));
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)"
+			    + (ignorecase ? ", ignoring case" : "")
+			    + "\nPress Ctrl-i to toggle case sensitivity", "");
+			if (term != null) search(term);
+		} else {
+			reset_search();
+			searching = 0;
+			currentSearchTerm = null;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		if (term) currentSearchTerm = term;
+
+		var re = new RegExp(currentSearchTerm, ignorecase ? 'i' : '');
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+		var params = get_params();
+		params.s = currentSearchTerm;
+		history.replaceState(null, null, parse_params(params));
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="395.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="26" >Firedrake example</text>
+<text id="details" x="10.00" y="377" > </text>
+<text id="unzoom" x="10.00" y="26" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="26" >Search</text>
+<text id="ignorecase" x="1174.00" y="26" >ic</text>
+<text id="matched" x="1090.00" y="377" > </text>
+<g id="frames">
+<g >
+<title>pyop2.parloop.JITModule.compile (788,534 us, 0.60%)</title><rect x="666.5" y="311" width="7.1" height="15.0" fill="rgb(155.53157175964,139.075383490571,139.075383490571)" rx="2" ry="2" />
+<text  x="669.53" y="321.5" ></text>
+</g>
+<g >
+<title>PyOP2SolveCallable_memcpy (16,201 us, 0.01%)</title><rect x="88.5" y="247" width="0.1" height="15.0" fill="rgb(151.134818071347,151.134818071347,124.73027219191)" rx="2" ry="2" />
+<text  x="91.45" y="257.5" ></text>
+</g>
+<g >
+<title>pyop2.parloop.JITModule.compile (1,888,564 us, 1.44%)</title><rect x="732.6" y="199" width="17.1" height="15.0" fill="rgb(133.626570230957,151.68096265247,151.68096265247)" rx="2" ry="2" />
+<text  x="735.63" y="209.5" ></text>
+</g>
+<g >
+<title>HybridRHS (25,092,246 us, 19.20%)</title><rect x="429.1" y="167" width="226.6" height="15.0" fill="rgb(146.353956760251,159.895867504145,146.353956760251)" rx="2" ry="2" />
+<text  x="432.14" y="177.5" >HybridRHS</text>
+</g>
+<g >
+<title>pyop2.parloop.JITModule.compile (13,147,542 us, 10.06%)</title><rect x="282.0" y="215" width="118.7" height="15.0" fill="rgb(156.29976401359,144.964857437526,144.964857437526)" rx="2" ry="2" />
+<text  x="285.01" y="225.5" >pyop2.parloop..</text>
+</g>
+<g >
+<title>ParLoop_Cells_wrap_form1_cell_integral_otherwise (18,932 us, 0.01%)</title><rect x="1112.9" y="183" width="0.2" height="15.0" fill="rgb(149.031037424675,149.031037424675,114.535027519579)" rx="2" ry="2" />
+<text  x="1115.91" y="193.5" ></text>
+</g>
+<g >
+<title>pyop2.parloop.JITModule.compile (953,744 us, 0.73%)</title><rect x="420.5" y="215" width="8.6" height="15.0" fill="rgb(133.130337521975,94.2714899000606,133.130337521975)" rx="2" ry="2" />
+<text  x="423.53" y="225.5" ></text>
+</g>
+<g >
+<title>pyop2.parloop.JITModule.compile (1,123,857 us, 0.86%)</title><rect x="682.0" y="311" width="10.1" height="15.0" fill="rgb(123.908528555099,123.908528555099,151.401650688084)" rx="2" ry="2" />
+<text  x="684.98" y="321.5" ></text>
+</g>
+<g >
+<title>MatMult (1,475,374 us, 1.13%)</title><rect x="664.2" y="247" width="13.3" height="15.0" fill="rgb(151.500223451714,151.500223451714,126.501082881385)" rx="2" ry="2" />
+<text  x="667.17" y="257.5" ></text>
+</g>
+<g >
+<title>firedrake.assemble.assemble_form (25,092,246 us, 19.20%)</title><rect x="429.1" y="199" width="226.6" height="15.0" fill="rgb(141.353829788932,115.344188834138,141.353829788932)" rx="2" ry="2" />
+<text  x="432.14" y="209.5" >firedrake.assemble.assemble..</text>
+</g>
+<g >
+<title>firedrake.assemble.assemble (25,092,246 us, 19.20%)</title><rect x="429.1" y="183" width="226.6" height="15.0" fill="rgb(154.439391860386,130.702004262956,130.702004262956)" rx="2" ry="2" />
+<text  x="432.14" y="193.5" >firedrake.assemble.assemble</text>
+</g>
+<g >
+<title>ParLoop_Cells_wrap_wrap_slate_loopy_knl_7 (1,530,421 us, 1.17%)</title><rect x="74.8" y="231" width="13.8" height="15.0" fill="rgb(156.677304214057,147.859332307771,147.859332307771)" rx="2" ry="2" />
+<text  x="77.78" y="241.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (7,089,404 us, 5.42%)</title><rect x="1112.8" y="167" width="64.0" height="15.0" fill="rgb(151.422288459494,141.144614177454,151.422288459494)" rx="2" ry="2" />
+<text  x="1115.77" y="177.5" >ParLoo..</text>
+</g>
+<g >
+<title>firedrake.assemble.assemble (8,554,880 us, 6.55%)</title><rect x="1112.8" y="135" width="77.2" height="15.0" fill="rgb(152.088020044306,112.674820339681,112.674820339681)" rx="2" ry="2" />
+<text  x="1115.77" y="145.5" >firedrak..</text>
+</g>
+<g >
+<title>PCApply (83,153,150 us, 63.62%)</title><rect x="50.5" y="135" width="750.7" height="15.0" fill="rgb(150.477979866472,150.477979866472,121.547133199058)" rx="2" ry="2" />
+<text  x="53.46" y="145.5" >PCApply</text>
+</g>
+<g >
+<title>firedrake.interpolation.interpolate (46,486 us, 0.04%)</title><rect x="727.9" y="263" width="0.4" height="15.0" fill="rgb(120.215083411225,120.215083411225,150.686790337656)" rx="2" ry="2" />
+<text  x="730.86" y="273.5" ></text>
+</g>
+<g >
+<title>PCSetUp (5,963,344 us, 4.56%)</title><rect x="678.4" y="199" width="53.9" height="15.0" fill="rgb(149.189352873242,149.189352873242,115.302248539559)" rx="2" ry="2" />
+<text  x="681.41" y="209.5" >PCSetUp</text>
+</g>
+<g >
+<title>MatMultTranspose (37,937 us, 0.03%)</title><rect x="677.6" y="247" width="0.4" height="15.0" fill="rgb(153.749656905857,125.414036278234,125.414036278234)" rx="2" ry="2" />
+<text  x="680.64" y="257.5" ></text>
+</g>
+<g >
+<title>firedrake.interpolation.make_interpolator (44,610 us, 0.03%)</title><rect x="1105.6" y="151" width="0.4" height="15.0" fill="rgb(126.774866262111,126.774866262111,151.95642572815)" rx="2" ry="2" />
+<text  x="1108.59" y="161.5" ></text>
+</g>
+<g >
+<title>firedrake.mg.embedded.TransferManager.op (4,535,150 us, 3.47%)</title><rect x="679.1" y="263" width="40.9" height="15.0" fill="rgb(154.346360873217,154.346360873217,140.293902693285)" rx="2" ry="2" />
+<text  x="682.09" y="273.5" >fir..</text>
+</g>
+<g >
+<title>firedrake.mg.interface.inject (4,535,150 us, 3.47%)</title><rect x="679.1" y="279" width="40.9" height="15.0" fill="rgb(153.607221844512,124.322034141259,124.322034141259)" rx="2" ry="2" />
+<text  x="682.09" y="289.5" >fir..</text>
+</g>
+<g >
+<title>HybridInit (34,514,365 us, 26.41%)</title><rect x="801.2" y="135" width="311.6" height="15.0" fill="rgb(156.041227783072,142.982746336888,142.982746336888)" rx="2" ry="2" />
+<text  x="804.17" y="145.5" >HybridInit</text>
+</g>
+<g >
+<title>firedrake.parloops.par_loop (750,771 us, 0.57%)</title><rect x="1106.0" y="151" width="6.8" height="15.0" fill="rgb(152.62265130156,116.773659978623,116.773659978623)" rx="2" ry="2" />
+<text  x="1108.99" y="161.5" ></text>
+</g>
+<g >
+<title>firedrake (130,703,550 us, 100.00%)</title><rect x="10.0" y="55" width="1180.0" height="15.0" fill="rgb(152.847924724387,118.500756220303,118.500756220303)" rx="2" ry="2" />
+<text  x="13.00" y="65.5" >firedrake</text>
+</g>
+<g >
+<title>firedrake.interpolation.make_interpolator (106,145 us, 0.08%)</title><rect x="800.2" y="183" width="1.0" height="15.0" fill="rgb(156.337464521911,145.253894667984,145.253894667984)" rx="2" ry="2" />
+<text  x="803.21" y="193.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (1,123,857 us, 0.86%)</title><rect x="682.0" y="295" width="10.1" height="15.0" fill="rgb(139.808679415086,160.961377769637,139.808679415086)" rx="2" ry="2" />
+<text  x="684.98" y="305.5" ></text>
+</g>
+<g >
+<title>SCSolve (16,115,644 us, 12.33%)</title><rect x="655.7" y="151" width="145.5" height="15.0" fill="rgb(130.435795067954,150.853724647247,150.853724647247)" rx="2" ry="2" />
+<text  x="658.68" y="161.5" >SCSolve</text>
+</g>
+<g >
+<title>firedrake.assemble.assemble_form (22,876,584 us, 17.50%)</title><rect x="59.7" y="199" width="206.6" height="15.0" fill="rgb(111.647334531445,145.98264228593,145.98264228593)" rx="2" ry="2" />
+<text  x="62.74" y="209.5" >firedrake.assemble.assem..</text>
+</g>
+<g >
+<title>pyop2.parloop.JITModule.compile (817,671 us, 0.63%)</title><rect x="720.5" y="279" width="7.4" height="15.0" fill="rgb(145.292894542538,160.068598562843,145.292894542538)" rx="2" ry="2" />
+<text  x="723.48" y="289.5" ></text>
+</g>
+<g >
+<title>HybridProject (1,028,328 us, 0.79%)</title><rect x="50.5" y="167" width="9.2" height="15.0" fill="rgb(135.65355473115,152.20647715252,152.20647715252)" rx="2" ry="2" />
+<text  x="53.46" y="177.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (2,205,527 us, 1.69%)</title><rect x="692.1" y="327" width="19.9" height="15.0" fill="rgb(155.83607909657,155.83607909657,147.513306391069)" rx="2" ry="2" />
+<text  x="695.13" y="337.5" ></text>
+</g>
+<g >
+<title>firedrake.variational_solver.LinearVariationalProblem.__init__ (25,321 us, 0.02%)</title><rect x="50.1" y="71" width="0.2" height="15.0" fill="rgb(125.898944716225,149.677504185688,149.677504185688)" rx="2" ry="2" />
+<text  x="53.09" y="81.5" ></text>
+</g>
+<g >
+<title>RecoverFirstElim (22,876,584 us, 17.50%)</title><rect x="59.7" y="167" width="206.6" height="15.0" fill="rgb(128.747095178063,162.762100784967,128.747095178063)" rx="2" ry="2" />
+<text  x="62.74" y="177.5" >RecoverFirstElim</text>
+</g>
+<g >
+<title>firedrake.mg.embedded.TransferManager.op (1,475,374 us, 1.13%)</title><rect x="664.2" y="263" width="13.3" height="15.0" fill="rgb(150.178241623173,150.178241623173,120.094555558454)" rx="2" ry="2" />
+<text  x="667.17" y="273.5" ></text>
+</g>
+<g >
+<title>firedrake.assemble.assemble (22,876,584 us, 17.50%)</title><rect x="59.7" y="183" width="206.6" height="15.0" fill="rgb(128.211387541898,162.849309004807,128.211387541898)" rx="2" ry="2" />
+<text  x="62.74" y="193.5" >firedrake.assemble.assem..</text>
+</g>
+<g >
+<title>MatMult (35,371 us, 0.03%)</title><rect x="678.4" y="247" width="0.3" height="15.0" fill="rgb(147.843275283597,159.65342030267,147.843275283597)" rx="2" ry="2" />
+<text  x="681.41" y="257.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (28,184,966 us, 21.56%)</title><rect x="817.1" y="199" width="254.5" height="15.0" fill="rgb(118.404466813609,118.404466813609,150.336348415537)" rx="2" ry="2" />
+<text  x="820.12" y="209.5" >ParLoopExecute</text>
+</g>
+<g >
+<title>PCSetUp (7,633,511 us, 5.84%)</title><rect x="732.3" y="167" width="68.9" height="15.0" fill="rgb(142.407718633768,160.538278361945,142.407718633768)" rx="2" ry="2" />
+<text  x="735.25" y="177.5" >PCSetUp</text>
+</g>
+<g >
+<title>firedrake.pointquery_utils.to_reference_coordinates (425,762 us, 0.33%)</title><rect x="673.6" y="295" width="3.9" height="15.0" fill="rgb(134.417651668241,134.417651668241,153.435674516434)" rx="2" ry="2" />
+<text  x="676.65" y="305.5" ></text>
+</g>
+<g >
+<title>firedrake.assemble.allocate_matrix (704,474 us, 0.54%)</title><rect x="1099.2" y="151" width="6.4" height="15.0" fill="rgb(112.721973182557,112.721973182557,149.23651093856)" rx="2" ry="2" />
+<text  x="1102.23" y="161.5" ></text>
+</g>
+<g >
+<title>firedrake.mg.interface.prolong (16,683 us, 0.01%)</title><rect x="677.5" y="279" width="0.1" height="15.0" fill="rgb(147.588993588588,159.694814997207,147.588993588588)" rx="2" ry="2" />
+<text  x="680.49" y="289.5" ></text>
+</g>
+<g >
+<title>pyop2.parloop.JITModule.compile (750,771 us, 0.57%)</title><rect x="1106.0" y="183" width="6.8" height="15.0" fill="rgb(155.851997537433,155.851997537433,147.590449604483)" rx="2" ry="2" />
+<text  x="1108.99" y="193.5" ></text>
+</g>
+<g >
+<title>HybridOperatorAssembly (32,969,875 us, 25.22%)</title><rect x="801.6" y="151" width="297.6" height="15.0" fill="rgb(133.62491440985,151.680533365517,151.680533365517)" rx="2" ry="2" />
+<text  x="804.57" y="161.5" >HybridOperatorAssembly</text>
+</g>
+<g >
+<title>pyop2.parloop.JITModule.compile (16,498,147 us, 12.62%)</title><rect x="88.6" y="231" width="148.9" height="15.0" fill="rgb(123.585265512186,149.077661429085,149.077661429085)" rx="2" ry="2" />
+<text  x="91.60" y="241.5" >pyop2.parloop.JIT..</text>
+</g>
+<g >
+<title>pyop2.parloop.JITModule.compile (7,054,724 us, 5.40%)</title><rect x="1113.1" y="183" width="63.7" height="15.0" fill="rgb(119.974190609612,119.974190609612,150.640165924441)" rx="2" ry="2" />
+<text  x="1116.08" y="193.5" >pyop2...</text>
+</g>
+<g >
+<title>PyOP2InverseCallable_getrf (157,846 us, 0.12%)</title><rect x="80.9" y="247" width="1.4" height="15.0" fill="rgb(143.708957265981,160.326448817166,143.708957265981)" rx="2" ry="2" />
+<text  x="83.86" y="257.5" ></text>
+</g>
+<g >
+<title>firedrake.parloops.par_loop (953,744 us, 0.73%)</title><rect x="420.5" y="183" width="8.6" height="15.0" fill="rgb(140.620262267587,160.829259630858,140.620262267587)" rx="2" ry="2" />
+<text  x="423.53" y="193.5" ></text>
+</g>
+<g >
+<title>PyOP2SolveCallable_gerts (16,890 us, 0.01%)</title><rect x="443.8" y="247" width="0.1" height="15.0" fill="rgb(149.971899329048,159.306900109225,149.971899329048)" rx="2" ry="2" />
+<text  x="446.77" y="257.5" ></text>
+</g>
+<g >
+<title>perfsolve (126,222,395 us, 96.57%)</title><rect x="50.5" y="71" width="1139.5" height="15.0" fill="rgb(135.207156959008,99.5933397074583,135.207156959008)" rx="2" ry="2" />
+<text  x="53.46" y="81.5" >perfsolve</text>
+</g>
+<g >
+<title>firedrake.mg.interface.prolong (1,475,374 us, 1.13%)</title><rect x="664.2" y="279" width="13.3" height="15.0" fill="rgb(154.04578208949,127.68432935276,127.68432935276)" rx="2" ry="2" />
+<text  x="667.17" y="289.5" ></text>
+</g>
+<g >
+<title>MatMult (47,664 us, 0.04%)</title><rect x="678.0" y="231" width="0.4" height="15.0" fill="rgb(151.045922152615,151.045922152615,124.299468893441)" rx="2" ry="2" />
+<text  x="680.98" y="241.5" ></text>
+</g>
+<g >
+<title>firedrake.assemble.assemble_form (32,969,875 us, 25.22%)</title><rect x="801.6" y="183" width="297.6" height="15.0" fill="rgb(130.672756162477,162.448621089829,130.672756162477)" rx="2" ry="2" />
+<text  x="804.57" y="193.5" >firedrake.assemble.assemble_form</text>
+</g>
+<g >
+<title>firedrake.assemble.assemble (32,969,875 us, 25.22%)</title><rect x="801.6" y="167" width="297.6" height="15.0" fill="rgb(137.351886017798,137.351886017798,154.003590842154)" rx="2" ry="2" />
+<text  x="804.57" y="177.5" >firedrake.assemble.assemble</text>
+</g>
+<g >
+<title>PyOP2InverseCallable_getri (546,818 us, 0.42%)</title><rect x="827.6" y="231" width="4.9" height="15.0" fill="rgb(148.644372309357,134.026204042728,148.644372309357)" rx="2" ry="2" />
+<text  x="830.59" y="241.5" ></text>
+</g>
+<g >
+<title>DMCoarsen (4,560,446 us, 3.49%)</title><rect x="678.9" y="231" width="41.1" height="15.0" fill="rgb(131.70553394552,151.182916208098,151.182916208098)" rx="2" ry="2" />
+<text  x="681.86" y="241.5" >DMC..</text>
+</g>
+<g >
+<title>KSPSolve (83,153,150 us, 63.62%)</title><rect x="50.5" y="119" width="750.7" height="15.0" fill="rgb(132.995713072436,132.995713072436,153.160460594665)" rx="2" ry="2" />
+<text  x="53.46" y="129.5" >KSPSolve</text>
+</g>
+<g >
+<title>ParLoopExecute (18,028,568 us, 13.79%)</title><rect x="74.8" y="215" width="162.7" height="15.0" fill="rgb(123.901492091961,123.901492091961,151.400288791993)" rx="2" ry="2" />
+<text  x="77.78" y="225.5" >ParLoopExecute</text>
+</g>
+<g >
+<title>CreateFunctionSpace (17,135 us, 0.01%)</title><rect x="24.8" y="71" width="0.1" height="15.0" fill="rgb(156.779198990351,148.640525592695,148.640525592695)" rx="2" ry="2" />
+<text  x="27.77" y="81.5" ></text>
+</g>
+<g >
+<title>pyop2.parloop.JITModule.compile (21,031,304 us, 16.09%)</title><rect x="446.3" y="231" width="189.9" height="15.0" fill="rgb(123.367300635678,123.367300635678,151.296896897228)" rx="2" ry="2" />
+<text  x="449.32" y="241.5" >pyop2.parloop.JITModul..</text>
+</g>
+<g >
+<title>pyop2.parloop.JITModule.compile (1,028,328 us, 0.79%)</title><rect x="50.5" y="215" width="9.2" height="15.0" fill="rgb(154.179589485305,128.710186054001,128.710186054001)" rx="2" ry="2" />
+<text  x="53.46" y="225.5" ></text>
+</g>
+<g >
+<title>PCApply (2,479,035 us, 1.90%)</title><rect x="656.0" y="199" width="22.4" height="15.0" fill="rgb(126.86021977252,163.06926654866,126.86021977252)" rx="2" ry="2" />
+<text  x="659.03" y="209.5" ></text>
+</g>
+<g >
+<title>firedrake.assemble.assemble (5,597,424 us, 4.28%)</title><rect x="749.7" y="183" width="50.5" height="15.0" fill="rgb(121.476403559647,148.53091944139,148.53091944139)" rx="2" ry="2" />
+<text  x="752.68" y="193.5" >fire..</text>
+</g>
+<g >
+<title>HybridBreak (953,744 us, 0.73%)</title><rect x="420.5" y="167" width="8.6" height="15.0" fill="rgb(148.344471975402,148.344471975402,111.207825726949)" rx="2" ry="2" />
+<text  x="423.53" y="177.5" ></text>
+</g>
+<g >
+<title>firedrake.interpolation.interpolate (2,302,847 us, 1.76%)</title><rect x="692.1" y="295" width="20.8" height="15.0" fill="rgb(151.619567067658,151.619567067658,127.079440404806)" rx="2" ry="2" />
+<text  x="695.13" y="305.5" ></text>
+</g>
+<g >
+<title>ParLoop_Cells_wrap_expression_kernel (18,660 us, 0.01%)</title><rect x="732.5" y="199" width="0.1" height="15.0" fill="rgb(155.524378924195,155.524378924195,146.002759401869)" rx="2" ry="2" />
+<text  x="735.46" y="209.5" ></text>
+</g>
+<g >
+<title>firedrake.extrusion_utils.make_extruded_coords (1,271,188 us, 0.97%)</title><rect x="13.3" y="87" width="11.5" height="15.0" fill="rgb(155.419786741155,138.218365015525,138.218365015525)" rx="2" ry="2" />
+<text  x="16.30" y="97.5" ></text>
+</g>
+<g >
+<title>firedrake.variational_solver.NonlinearVariationalSolver.__init__ (14,764 us, 0.01%)</title><rect x="50.3" y="71" width="0.2" height="15.0" fill="rgb(136.959588305763,136.959588305763,153.927662252728)" rx="2" ry="2" />
+<text  x="53.32" y="81.5" ></text>
+</g>
+<g >
+<title>firedrake.tsfc_interface.compile_form (1,465,476 us, 1.12%)</title><rect x="1176.8" y="167" width="13.2" height="15.0" fill="rgb(135.917585038207,101.413811660407,135.917585038207)" rx="2" ry="2" />
+<text  x="1179.77" y="177.5" ></text>
+</g>
+<g >
+<title>PyOP2SolveCallable_gerts (29,091 us, 0.02%)</title><rect x="85.1" y="247" width="0.2" height="15.0" fill="rgb(111.211523498812,111.211523498812,148.94416583848)" rx="2" ry="2" />
+<text  x="88.08" y="257.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspaceimpl.FunctionSpace.__init__ (17,135 us, 0.01%)</title><rect x="24.8" y="87" width="0.1" height="15.0" fill="rgb(153.916843852465,126.695802868898,126.695802868898)" rx="2" ry="2" />
+<text  x="27.77" y="97.5" ></text>
+</g>
+<g >
+<title>PCApply (1,603,890 us, 1.23%)</title><rect x="663.5" y="231" width="14.5" height="15.0" fill="rgb(137.542322048464,137.542322048464,154.040449428735)" rx="2" ry="2" />
+<text  x="666.50" y="241.5" ></text>
+</g>
+<g >
+<title>CreateSparsity (59,438 us, 0.05%)</title><rect x="800.5" y="199" width="0.5" height="15.0" fill="rgb(115.32659021364,115.32659021364,149.74063036393)" rx="2" ry="2" />
+<text  x="803.51" y="209.5" ></text>
+</g>
+<g >
+<title>KSPSolve (35,371 us, 0.03%)</title><rect x="678.4" y="231" width="0.3" height="15.0" fill="rgb(135.02897071882,152.044547964139,152.044547964139)" rx="2" ry="2" />
+<text  x="681.41" y="241.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (953,744 us, 0.73%)</title><rect x="420.5" y="199" width="8.6" height="15.0" fill="rgb(156.551421577466,146.894232093905,146.894232093905)" rx="2" ry="2" />
+<text  x="423.53" y="209.5" ></text>
+</g>
+<g >
+<title>PyOP2InverseCallable_getri (308,618 us, 0.24%)</title><rect x="82.3" y="247" width="2.8" height="15.0" fill="rgb(153.631046740479,124.504691677003,124.504691677003)" rx="2" ry="2" />
+<text  x="85.29" y="257.5" ></text>
+</g>
+<g >
+<title>MatZeroInitial (116,169 us, 0.09%)</title><rect x="1104.5" y="167" width="1.1" height="15.0" fill="rgb(152.694176033162,152.694176033162,132.287160776095)" rx="2" ry="2" />
+<text  x="1107.54" y="177.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (21,697,879 us, 16.60%)</title><rect x="440.3" y="215" width="195.9" height="15.0" fill="rgb(125.385599708778,125.385599708778,151.687535427505)" rx="2" ry="2" />
+<text  x="443.30" y="225.5" >ParLoopExecute</text>
+</g>
+<g >
+<title>firedrake.functionspacedata.FunctionSpaceData.__init__ (17,135 us, 0.01%)</title><rect x="24.8" y="119" width="0.1" height="15.0" fill="rgb(109.22984007306,145.355884463386,145.355884463386)" rx="2" ry="2" />
+<text  x="27.77" y="129.5" ></text>
+</g>
+<g >
+<title>MatResidual (47,664 us, 0.04%)</title><rect x="678.0" y="215" width="0.4" height="15.0" fill="rgb(151.526575959058,151.526575959058,126.628791186203)" rx="2" ry="2" />
+<text  x="680.98" y="225.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (750,771 us, 0.57%)</title><rect x="1106.0" y="167" width="6.8" height="15.0" fill="rgb(136.820999252623,136.820999252623,153.900838565024)" rx="2" ry="2" />
+<text  x="1108.99" y="177.5" ></text>
+</g>
+<g >
+<title>PCSetUp (5,927,973 us, 4.54%)</title><rect x="678.7" y="215" width="53.6" height="15.0" fill="rgb(155.222988417159,155.222988417159,144.542174637004)" rx="2" ry="2" />
+<text  x="681.73" y="225.5" >PCSe..</text>
+</g>
+<g >
+<title>firedrake.functionspacedata.get_shared_data (17,135 us, 0.01%)</title><rect x="24.8" y="103" width="0.1" height="15.0" fill="rgb(140.858595580739,114.075151175643,140.858595580739)" rx="2" ry="2" />
+<text  x="27.77" y="113.5" ></text>
+</g>
+<g >
+<title>ParLoop_Cells_wrap_wrap_slate_loopy_knl_14 (481,236 us, 0.37%)</title><rect x="277.7" y="215" width="4.3" height="15.0" fill="rgb(150.359060560285,138.420092685731,150.359060560285)" rx="2" ry="2" />
+<text  x="280.67" y="225.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (817,671 us, 0.63%)</title><rect x="720.5" y="263" width="7.4" height="15.0" fill="rgb(104.072037942032,144.01867650349,144.01867650349)" rx="2" ry="2" />
+<text  x="723.48" y="273.5" ></text>
+</g>
+<g >
+<title>KSPSolve (2,415,189 us, 1.85%)</title><rect x="656.2" y="215" width="21.8" height="15.0" fill="rgb(146.753223916691,155.084169163587,155.084169163587)" rx="2" ry="2" />
+<text  x="659.18" y="225.5" ></text>
+</g>
+<g >
+<title>PyOP2InverseCallable_getrf (265,123 us, 0.20%)</title><rect x="825.2" y="231" width="2.4" height="15.0" fill="rgb(136.351118489152,161.524236525022,136.351118489152)" rx="2" ry="2" />
+<text  x="828.20" y="241.5" ></text>
+</g>
+<g >
+<title>CreateExtMesh (1,271,188 us, 0.97%)</title><rect x="13.3" y="71" width="11.5" height="15.0" fill="rgb(152.37878476994,152.37878476994,130.758726192788)" rx="2" ry="2" />
+<text  x="16.30" y="81.5" ></text>
+</g>
+<g >
+<title>firedrake.assemble.assemble_form (5,597,424 us, 4.28%)</title><rect x="749.7" y="199" width="50.5" height="15.0" fill="rgb(152.253825026732,152.253825026732,130.153152052625)" rx="2" ry="2" />
+<text  x="752.68" y="209.5" >fire..</text>
+</g>
+<g >
+<title>SNESFunctionEval (8,554,880 us, 6.55%)</title><rect x="1112.8" y="119" width="77.2" height="15.0" fill="rgb(134.495836249117,151.906327916438,151.906327916438)" rx="2" ry="2" />
+<text  x="1115.77" y="129.5" >SNESFunc..</text>
+</g>
+<g >
+<title>firedrake.interpolation.make_interpolator (97,320 us, 0.07%)</title><rect x="712.0" y="311" width="0.9" height="15.0" fill="rgb(117.265603830127,117.265603830127,150.11592332196)" rx="2" ry="2" />
+<text  x="715.04" y="321.5" ></text>
+</g>
+<g >
+<title>firedrake.dmhooks.coarsen (4,560,446 us, 3.49%)</title><rect x="678.9" y="247" width="41.1" height="15.0" fill="rgb(131.523847300841,162.310071369631,131.523847300841)" rx="2" ry="2" />
+<text  x="681.86" y="257.5" >fir..</text>
+</g>
+<g >
+<title>firedrake.mg.embedded.TransferManager.op (16,683 us, 0.01%)</title><rect x="677.5" y="263" width="0.1" height="15.0" fill="rgb(128.594007974463,150.376224289676,150.376224289676)" rx="2" ry="2" />
+<text  x="680.49" y="273.5" ></text>
+</g>
+<g >
+<title>PyOP2SolveCallable_getrf (344,928 us, 0.26%)</title><rect x="85.3" y="247" width="3.2" height="15.0" fill="rgb(124.592005360241,163.43851075531,124.592005360241)" rx="2" ry="2" />
+<text  x="88.34" y="257.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (1,907,224 us, 1.46%)</title><rect x="732.5" y="183" width="17.2" height="15.0" fill="rgb(149.269225301257,159.421288904447,149.269225301257)" rx="2" ry="2" />
+<text  x="735.46" y="193.5" ></text>
+</g>
+<g >
+<title>firedrake.pointquery_utils.to_reference_coordinates (440,177 us, 0.34%)</title><rect x="728.3" y="263" width="4.0" height="15.0" fill="rgb(146.553916998887,146.553916998887,155.784629096559)" rx="2" ry="2" />
+<text  x="731.28" y="273.5" ></text>
+</g>
+<g >
+<title>firedrake.assemble.assemble (17,086,604 us, 13.07%)</title><rect x="266.3" y="167" width="154.2" height="15.0" fill="rgb(144.170270007279,154.414514446332,154.414514446332)" rx="2" ry="2" />
+<text  x="269.27" y="177.5" >firedrake.assemble..</text>
+</g>
+<g >
+<title>ParLoopExecute (17,484 us, 0.01%)</title><rect x="677.8" y="279" width="0.2" height="15.0" fill="rgb(153.617774953934,124.402941313491,124.402941313491)" rx="2" ry="2" />
+<text  x="680.83" y="289.5" ></text>
+</g>
+<g >
+<title>CreateSparsity (588,305 us, 0.45%)</title><rect x="1099.2" y="167" width="5.3" height="15.0" fill="rgb(150.320730384872,150.320730384872,120.785078018993)" rx="2" ry="2" />
+<text  x="1102.23" y="177.5" ></text>
+</g>
+<g >
+<title>firedrake.interpolation.Interpolator.interpolate (2,205,527 us, 1.69%)</title><rect x="692.1" y="311" width="19.9" height="15.0" fill="rgb(155.199852196083,136.53220016997,136.53220016997)" rx="2" ry="2" />
+<text  x="695.13" y="321.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (1,028,328 us, 0.79%)</title><rect x="50.5" y="199" width="9.2" height="15.0" fill="rgb(134.777254150724,98.4917137612304,134.777254150724)" rx="2" ry="2" />
+<text  x="53.46" y="209.5" ></text>
+</g>
+<g >
+<title>firedrake.mg.interface.restrict (37,937 us, 0.03%)</title><rect x="677.6" y="263" width="0.4" height="15.0" fill="rgb(129.029462868519,162.716133951637,129.029462868519)" rx="2" ry="2" />
+<text  x="680.64" y="273.5" ></text>
+</g>
+<g >
+<title>MatMultTranspose (1,353,083 us, 1.04%)</title><rect x="720.0" y="231" width="12.3" height="15.0" fill="rgb(110.748115273157,110.748115273157,148.854473923837)" rx="2" ry="2" />
+<text  x="723.04" y="241.5" ></text>
+</g>
+<g >
+<title>firedrake.tsfc_interface.compile_form (366,115 us, 0.28%)</title><rect x="796.9" y="215" width="3.3" height="15.0" fill="rgb(148.042699180577,148.042699180577,109.745388336643)" rx="2" ry="2" />
+<text  x="799.90" y="225.5" ></text>
+</g>
+<g >
+<title>ParLoop_Cells_wrap_form0_cell_integral_otherwise (15,748 us, 0.01%)</title><rect x="1112.8" y="183" width="0.1" height="15.0" fill="rgb(153.142248992388,120.757242274972,120.757242274972)" rx="2" ry="2" />
+<text  x="1115.77" y="193.5" ></text>
+</g>
+<g >
+<title>firedrake.tsfc_interface.compile_form (3,062,262 us, 2.34%)</title><rect x="1071.6" y="199" width="27.6" height="15.0" fill="rgb(130.589389123441,130.589389123441,152.694720475505)" rx="2" ry="2" />
+<text  x="1074.58" y="209.5" >f..</text>
+</g>
+<g >
+<title>MatMult (768,837 us, 0.59%)</title><rect x="656.6" y="231" width="6.9" height="15.0" fill="rgb(142.621531882934,160.503471553941,142.621531882934)" rx="2" ry="2" />
+<text  x="659.56" y="241.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (1,232,767 us, 0.94%)</title><rect x="13.6" y="103" width="11.2" height="15.0" fill="rgb(132.942483562247,132.942483562247,153.150158108822)" rx="2" ry="2" />
+<text  x="16.64" y="113.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (13,628,778 us, 10.43%)</title><rect x="277.7" y="199" width="123.0" height="15.0" fill="rgb(124.488183754979,149.311751343883,149.311751343883)" rx="2" ry="2" />
+<text  x="280.67" y="209.5" >ParLoopExecute</text>
+</g>
+<g >
+<title>SCBackSub (40,991,516 us, 31.36%)</title><rect x="50.5" y="151" width="370.0" height="15.0" fill="rgb(112.44921547407,146.190537345129,146.190537345129)" rx="2" ry="2" />
+<text  x="53.46" y="161.5" >SCBackSub</text>
+</g>
+<g >
+<title>firedrake.tsfc_interface.compile_form (2,158,553 us, 1.65%)</title><rect x="636.2" y="215" width="19.5" height="15.0" fill="rgb(152.819271475782,118.281081314326,118.281081314326)" rx="2" ry="2" />
+<text  x="639.19" y="225.5" ></text>
+</g>
+<g >
+<title>firedrake.tsfc_interface.compile_form (2,195,250 us, 1.68%)</title><rect x="400.7" y="199" width="19.8" height="15.0" fill="rgb(109.207209981381,145.35001740258,145.35001740258)" rx="2" ry="2" />
+<text  x="403.71" y="209.5" ></text>
+</g>
+<g >
+<title>pyop2.parloop.JITModule.compile (1,232,767 us, 0.94%)</title><rect x="13.6" y="119" width="11.2" height="15.0" fill="rgb(137.911469364521,106.523140246586,137.911469364521)" rx="2" ry="2" />
+<text  x="16.64" y="129.5" ></text>
+</g>
+<g >
+<title>pyop2.parloop.JITModule.compile (2,205,527 us, 1.69%)</title><rect x="692.1" y="343" width="19.9" height="15.0" fill="rgb(156.058256104006,143.113296797383,143.113296797383)" rx="2" ry="2" />
+<text  x="695.13" y="353.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (5,231,309 us, 4.00%)</title><rect x="749.7" y="215" width="47.2" height="15.0" fill="rgb(146.140404029549,154.925289933587,154.925289933587)" rx="2" ry="2" />
+<text  x="752.68" y="225.5" >ParL..</text>
+</g>
+<g >
+<title>firedrake.tsfc_interface.compile_form (3,181,921 us, 2.43%)</title><rect x="237.5" y="215" width="28.8" height="15.0" fill="rgb(129.46633317177,162.645015530177,129.46633317177)" rx="2" ry="2" />
+<text  x="240.54" y="225.5" >f..</text>
+</g>
+<g >
+<title>PCSetUp (34,514,365 us, 26.41%)</title><rect x="801.2" y="119" width="311.6" height="15.0" fill="rgb(152.046000470161,112.352670271234,112.352670271234)" rx="2" ry="2" />
+<text  x="804.17" y="129.5" >PCSetUp</text>
+</g>
+<g >
+<title>ParLoopExecute (788,534 us, 0.60%)</title><rect x="666.5" y="295" width="7.1" height="15.0" fill="rgb(140.061741758825,160.920181574145,140.061741758825)" rx="2" ry="2" />
+<text  x="669.53" y="305.5" ></text>
+</g>
+<g >
+<title>MatMultAdd (16,683 us, 0.01%)</title><rect x="677.5" y="247" width="0.1" height="15.0" fill="rgb(147.616926550711,147.616926550711,107.68202866883)" rx="2" ry="2" />
+<text  x="680.49" y="257.5" ></text>
+</g>
+<g >
+<title>firedrake.assemble.assemble_form (17,086,604 us, 13.07%)</title><rect x="266.3" y="183" width="154.2" height="15.0" fill="rgb(155.327336183678,155.327336183678,145.047859967053)" rx="2" ry="2" />
+<text  x="269.27" y="193.5" >firedrake.assemble..</text>
+</g>
+<g >
+<title>firedrake.pointquery_utils.to_reference_coordinates (788,638 us, 0.60%)</title><rect x="712.9" y="295" width="7.1" height="15.0" fill="rgb(143.445217813347,160.369383146664,143.445217813347)" rx="2" ry="2" />
+<text  x="715.92" y="305.5" ></text>
+</g>
+<g >
+<title>PyOP2SolveCallable_getrf (141,824 us, 0.11%)</title><rect x="280.7" y="231" width="1.3" height="15.0" fill="rgb(148.789943175701,148.789943175701,113.36664769763)" rx="2" ry="2" />
+<text  x="283.73" y="241.5" ></text>
+</g>
+<g >
+<title>firedrake.parloops.par_loop (1,028,328 us, 0.79%)</title><rect x="50.5" y="183" width="9.2" height="15.0" fill="rgb(140.756109860467,160.807144906436,140.756109860467)" rx="2" ry="2" />
+<text  x="53.46" y="193.5" ></text>
+</g>
+<g >
+<title>MatZeroInitial (13,841 us, 0.01%)</title><rect x="801.0" y="199" width="0.2" height="15.0" fill="rgb(148.468643547016,159.551616166765,148.468643547016)" rx="2" ry="2" />
+<text  x="804.04" y="209.5" ></text>
+</g>
+<g >
+<title>CreateFunctionSpace (13,866 us, 0.01%)</title><rect x="801.4" y="151" width="0.2" height="15.0" fill="rgb(143.111914490226,160.423641827172,143.111914490226)" rx="2" ry="2" />
+<text  x="804.45" y="161.5" ></text>
+</g>
+<g >
+<title>all (130,703,550 us, 100%)</title><rect x="10.0" y="39" width="1180.0" height="15.0" fill="rgb(152.419702691178,143.700488146144,152.419702691178)" rx="2" ry="2" />
+<text  x="13.00" y="49.5" ></text>
+</g>
+<g >
+<title>firedrake.variational_solver.NonlinearVariationalSolver.solve (126,222,395 us, 96.57%)</title><rect x="50.5" y="87" width="1139.5" height="15.0" fill="rgb(154.656977805271,132.370163173743,132.370163173743)" rx="2" ry="2" />
+<text  x="53.46" y="97.5" >firedrake.variational_solver.NonlinearVariationalSolver.solve</text>
+</g>
+<g >
+<title>firedrake.interpolation.make_interpolator (46,486 us, 0.04%)</title><rect x="727.9" y="279" width="0.4" height="15.0" fill="rgb(153.853343706823,126.208968418978,126.208968418978)" rx="2" ry="2" />
+<text  x="730.86" y="289.5" ></text>
+</g>
+<g >
+<title>SCForwardElim (26,045,990 us, 19.93%)</title><rect x="420.5" y="151" width="235.2" height="15.0" fill="rgb(149.289023792918,149.289023792918,115.785269150295)" rx="2" ry="2" />
+<text  x="423.53" y="161.5" >SCForwardElim</text>
+</g>
+<g >
+<title>pyop2.parloop.JITModule.compile (5,231,309 us, 4.00%)</title><rect x="749.7" y="231" width="47.2" height="15.0" fill="rgb(147.848576917678,147.848576917678,156.03520843568)" rx="2" ry="2" />
+<text  x="752.68" y="241.5" >pyop..</text>
+</g>
+<g >
+<title>PCApply (8,442,379 us, 6.46%)</title><rect x="656.0" y="183" width="76.3" height="15.0" fill="rgb(146.597771593232,155.043866709356,155.043866709356)" rx="2" ry="2" />
+<text  x="659.03" y="193.5" >PCApply</text>
+</g>
+<g >
+<title>firedrake.__init__ (2,787,584 us, 2.13%)</title><rect x="24.9" y="71" width="25.2" height="15.0" fill="rgb(135.678604134896,161.633715605947,135.678604134896)" rx="2" ry="2" />
+<text  x="27.93" y="81.5" >f..</text>
+</g>
+<g >
+<title>firedrake.mg.interface.restrict (1,353,083 us, 1.04%)</title><rect x="720.0" y="247" width="12.3" height="15.0" fill="rgb(149.462181230008,149.462181230008,116.624416730037)" rx="2" ry="2" />
+<text  x="723.04" y="257.5" ></text>
+</g>
+<g >
+<title>KSPSetUp (35,371 us, 0.03%)</title><rect x="678.4" y="215" width="0.3" height="15.0" fill="rgb(151.072970971677,151.072970971677,124.430551631976)" rx="2" ry="2" />
+<text  x="681.41" y="225.5" ></text>
+</g>
+<g >
+<title>ParLoop_Cells_wrap_wrap_slate_loopy_knl_0 (1,706,430 us, 1.31%)</title><rect x="817.1" y="215" width="15.4" height="15.0" fill="rgb(155.307399905667,155.307399905667,144.951245696694)" rx="2" ry="2" />
+<text  x="820.12" y="225.5" ></text>
+</g>
+<g >
+<title>firedrake.assemble.assemble_form (8,554,880 us, 6.55%)</title><rect x="1112.8" y="151" width="77.2" height="15.0" fill="rgb(128.019030070484,128.019030070484,152.197231626545)" rx="2" ry="2" />
+<text  x="1115.77" y="161.5" >firedrak..</text>
+</g>
+<g >
+<title>MatMult (39,754 us, 0.03%)</title><rect x="655.7" y="183" width="0.3" height="15.0" fill="rgb(141.421768981255,141.421768981255,154.791310125404)" rx="2" ry="2" />
+<text  x="658.68" y="193.5" ></text>
+</g>
+<g >
+<title>ParLoop_Cells_wrap_wrap_slate_loopy_knl_4 (666,575 us, 0.51%)</title><rect x="440.3" y="231" width="6.0" height="15.0" fill="rgb(145.57471059852,154.77862867369,154.77862867369)" rx="2" ry="2" />
+<text  x="443.30" y="241.5" ></text>
+</g>
+<g >
+<title>pyop2.parloop.JITModule.compile (26,478,536 us, 20.26%)</title><rect x="832.5" y="215" width="239.1" height="15.0" fill="rgb(115.301569384167,146.930036507006,146.930036507006)" rx="2" ry="2" />
+<text  x="835.53" y="225.5" >pyop2.parloop.JITModule.compile</text>
+</g>
+<g >
+<title>SNESSolve (126,222,395 us, 96.57%)</title><rect x="50.5" y="103" width="1139.5" height="15.0" fill="rgb(122.20281580833,122.20281580833,151.071512737096)" rx="2" ry="2" />
+<text  x="53.46" y="113.5" >SNESSolve</text>
+</g>
+<g >
+<title>KSPSolve (73,896 us, 0.06%)</title><rect x="663.5" y="247" width="0.7" height="15.0" fill="rgb(141.82003790591,160.633947317643,141.82003790591)" rx="2" ry="2" />
+<text  x="666.50" y="257.5" ></text>
+</g>
+<g >
+<title>PyOP2SolveCallable_getrf (265,291 us, 0.20%)</title><rect x="443.9" y="247" width="2.4" height="15.0" fill="rgb(134.04104076377,161.900295689619,134.04104076377)" rx="2" ry="2" />
+<text  x="446.92" y="257.5" ></text>
+</g>
+<g >
+<title>KSPSolve (8,482,133 us, 6.49%)</title><rect x="655.7" y="167" width="76.6" height="15.0" fill="rgb(134.014898424347,96.5381772123893,134.014898424347)" rx="2" ry="2" />
+<text  x="658.68" y="177.5" >KSPSolve</text>
+</g>
+</g>
+</svg>
