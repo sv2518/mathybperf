@@ -71,6 +71,12 @@ cheby_none = {'ksp_type': 'chebyshev',
               'ksp_monitor': None,
               'ksp_norm_type': 'unpreconditioned'}
 
+cheby_none_lessitsonlevels = {'ksp_type': 'chebyshev',
+                              'ksp_max_it': 2,
+                              'pc_type': 'none',
+                              'ksp_monitor': None,
+                              'ksp_norm_type': 'unpreconditioned'}
+
 # Params for GTMG
 gt_params_matexp = {'mg_levels': cheby_jacobi,
                     'mg_coarse': mgmatexp}
@@ -80,6 +86,9 @@ gt_params_global_matfree = {'mg_coarse': mgmatfree_mtf,
 gt_params_fully_matfree = {'mg_coarse': mgmatfree_mtf,
                            'mg_levels': cheby_none,
                            'mat_type': 'matfree'}
+gt_params_fully_matfree_lessitsonlevels = {'mg_coarse': mgmatfree_mtf,
+                                           'mg_levels': cheby_none_lessits,
+                                           'mat_type': 'matfree'}
 
 # 2) FULL PARAMS
 # Matrix explicit, direct hybridization
@@ -208,6 +217,24 @@ gtmg_fully_matfree_params = {'snes_type': 'ksponly',
                                                'gt': gt_params_fully_matfree,
                                                'ksp_view': None,
                                                'ksp_monitor': None}}
+
+gtmg_global_matfree_params_lessitsonlevels = {'snes_type': 'ksponly',
+                                              'mat_type': 'matfree',
+                                              'ksp_type': 'preonly',
+                                              'pc_type': 'python',
+                                              'pc_python_type': 'firedrake.HybridizationPC',
+                                              'hybridization': {'ksp_type': 'cg',
+                                                                'pc_type': 'python',
+                                                                'mat_type': 'matfree',
+                                                                'ksp_rtol': 1.e-8,
+                                                                'localsolve': {'ksp_type': 'preonly',
+                                                                               'mat_type': 'matfree',  # local-matfree!
+                                                                               'pc_type': 'fieldsplit',
+                                                                               'pc_fieldsplit_type': 'schur'},
+                                                                'pc_python_type': 'firedrake.GTMGPC',
+                                                                'gt': gt_params_fully_matfree_lessitsonlevels,
+                                                                'ksp_view': None,
+                                                                'ksp_monitor': None}}
 
 gtmg_fully_matfree_params_maxitscg = {'snes_type': 'ksponly',
                                       'mat_type': 'matfree',
