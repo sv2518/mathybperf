@@ -20,7 +20,8 @@ mgmatfree_mtf = {'snes_type': 'ksponly',
                  'mg_levels_pc_type': 'none',
                  'mg_levels_ksp_monitor': None,
                  'ksp_monitor': None,
-                 'ksp_norm_type': 'preconditioned'}
+                 'ksp_norm_type': 'preconditioned',
+                 'ksp_monitor_true_residual': None}
 
 mgmatfree_mtx = {'snes_type': 'ksponly',
                  'ksp_type': 'preonly',
@@ -54,7 +55,8 @@ mgmatexp = {'ksp_type': 'preonly',
                           'ksp_norm_type': 'preconditioned',
                           'ksp_monitor_true_residual': None,
             'ksp_monitor': None,
-            'ksp_norm_type': 'preconditioned'}}
+            'ksp_norm_type': 'preconditioned',
+            'ksp_monitor_true_residual': None}}
 
 # Params for solves on levels
 cheby_jacobi = {'ksp_type': 'chebyshev',
