@@ -87,7 +87,7 @@ gt_params_fully_matfree = {'mg_coarse': mgmatfree_mtf,
                            'mg_levels': cheby_none,
                            'mat_type': 'matfree'}
 gt_params_fully_matfree_lessitsonlevels = {'mg_coarse': mgmatfree_mtf,
-                                           'mg_levels': cheby_none_lessits,
+                                           'mg_levels': cheby_none_lessitsonlevels,
                                            'mat_type': 'matfree'}
 
 # 2) FULL PARAMS
