@@ -109,26 +109,26 @@ mgmatfree_mtx_higherrtol = {'snes_type': 'ksponly',
                             'ksp_norm_type': 'preconditioned'}
 
 mgmatfree_mtx_higherrtol_cleanP1 = {'snes_type': 'ksponly',
-                            'ksp_type': 'cg',
-                            'ksp_rtol': 1.e-8,
-                            'pc_type': 'python',
-                            'pc_python_type': 'firedrake.AssembledPC',
-                            'assembled_pc_type': 'mg',
-                            'assembled_pc_mg_type': 'full',
-                            'assembled_mg_coarse_ksp_type': 'preonly',
-                            'assembled_mg_coarse_ksp_rtol': 1.e-8,
-                            'assembled_mg_coarse_pc_type': 'lu',
-                            'assembled_mg_coarse_pc_factor_mat_solver_type': 'superlu_dist',
-                            'assembled_mg_coarse_ksp_monitor': None,
-                            'assembled_mg_levels_ksp_type': 'chebyshev',
-                            'assembled_mg_levels_ksp_max_it': 3,
-                            'assembled_mg_levels_pc_type': 'jacobi',
-                            'assembled_mg_levels_ksp_convergence_test': "default",
-                            'assembled_mg_levels_ksp_monitor': None,
-                            'assembled_mg_levels_ksp_norm_type': 'preconditioned',
-                            'assembled_mg_levels_ksp_monitor_true_residual': None,
-                            'ksp_monitor': None,
-                            'ksp_norm_type': 'preconditioned'}
+                                    'ksp_type': 'cg',
+                                    'ksp_rtol': 1.e-8,
+                                    'pc_type': 'python',
+                                    'pc_python_type': 'firedrake.AssembledPC',
+                                    'assembled_pc_type': 'mg',
+                                    'assembled_pc_mg_type': 'full',
+                                    'assembled_mg_coarse_ksp_type': 'preonly',
+                                    'assembled_mg_coarse_ksp_rtol': 1.e-8,
+                                    'assembled_mg_coarse_pc_type': 'lu',
+                                    'assembled_mg_coarse_pc_factor_mat_solver_type': 'superlu_dist',
+                                    'assembled_mg_coarse_ksp_monitor': None,
+                                    'assembled_mg_levels_ksp_type': 'chebyshev',
+                                    'assembled_mg_levels_ksp_max_it': 3,
+                                    'assembled_mg_levels_pc_type': 'jacobi',
+                                    'assembled_mg_levels_ksp_convergence_test': "default",
+                                    'assembled_mg_levels_ksp_monitor': None,
+                                    'assembled_mg_levels_ksp_norm_type': 'preconditioned',
+                                    'assembled_mg_levels_ksp_monitor_true_residual': None,
+                                    'ksp_monitor': None,
+                                    'ksp_norm_type': 'preconditioned'}
 
 mgmatexp = {'ksp_type': 'preonly',
             'pc_type': 'mg',
@@ -142,10 +142,23 @@ mgmatexp = {'ksp_type': 'preonly',
                           'ksp_max_it': 3,
                           'ksp_monitor': None,
                           'ksp_norm_type': 'preconditioned',
-                          'ksp_monitor_true_residual': None,
-            'ksp_monitor': None,
-            'ksp_norm_type': 'preconditioned',
-            'ksp_monitor_true_residual': None}}
+                          'ksp_monitor_true_residual': None}}
+
+mgmatexp_chebynone = {'ksp_type': 'preonly',
+                      'pc_type': 'mg',
+                      'pc_mg_type': 'full',
+                      'mg_coarse': {'ksp_type': 'preonly',
+                                    'pc_type': 'lu',
+                                    'pc_factor_mat_solver_type': 'superlu_dist',
+                                    'ksp_monitor': None},
+                      'mg_levels': {'ksp_type': 'chebyshev',
+                                    'pc_type': 'none',
+                                    'ksp_max_it': 3,
+                                    'ksp_monitor': None,
+                                    'ksp_norm_type': 'unpreconditioned',
+                                    'ksp_monitor': None,
+                                    'ksp_norm_type': 'preconditioned',
+                                    'ksp_monitor_true_residual': None}}
 
 # Params for solves on levels
 cheby_jacobi = {'ksp_type': 'chebyshev',
@@ -154,12 +167,12 @@ cheby_jacobi = {'ksp_type': 'chebyshev',
                 'ksp_monitor': None,
                 'ksp_norm_type': 'preconditioned',
                 'ksp_monitor_true_residual': None}
+
 cheby_none = {'ksp_type': 'chebyshev',
-              'ksp_max_it': 10,
+              'ksp_max_it': 3,
               'pc_type': 'none',
               'ksp_monitor': None,
-              'ksp_norm_type': 'unpreconditioned',
-              'ksp_convergence_test': None}
+              'ksp_norm_type': 'unpreconditioned'}
 
 cheby_none_lessitsonlevels = {'ksp_type': 'chebyshev',
                               'ksp_max_it': 2,
@@ -168,23 +181,23 @@ cheby_none_lessitsonlevels = {'ksp_type': 'chebyshev',
                               'ksp_norm_type': 'unpreconditioned'}
 
 cheby_none_moreits = {'ksp_type': 'chebyshev',
-              'ksp_max_it': 10,
-              'pc_type': 'none',
-              'ksp_monitor': None,
-              'ksp_norm_type': 'unpreconditioned'}
+                      'ksp_max_it': 10,
+                      'pc_type': 'none',
+                      'ksp_monitor': None,
+                      'ksp_norm_type': 'unpreconditioned'}
 
 cheby_none_moreitsandcg = {'ksp_type': 'chebyshev',
-              'ksp_max_it': 10,
-              "esteig_ksp_type": "cg",
-              "esteig_ksp_norm_type": "unpreconditioned",
-              "esteig_pc_type": "none",
-              # "ksp_chebyshev_esteig": "0.8,0.2,0.0,1.0",
-              # "ksp_chebyshev_esteig_noisy": True,
-              # "ksp_chebyshev_esteig_steps": 8,
-              'pc_type': 'none',
-              'ksp_monitor': None,
-              'ksp_norm_type': 'unpreconditioned',
-              "ksp_convergence_test": "default"}
+                           'ksp_max_it': 10,
+                           "esteig_ksp_type": "cg",
+                           "esteig_ksp_norm_type": "unpreconditioned",
+                           "esteig_pc_type": "none",
+                           # "ksp_chebyshev_esteig": "0.8,0.2,0.0,1.0",
+                           # "ksp_chebyshev_esteig_noisy": True,
+                           # "ksp_chebyshev_esteig_steps": 8,
+                           'pc_type': 'none',
+                           'ksp_monitor': None,
+                           'ksp_norm_type': 'unpreconditioned',
+                           "ksp_convergence_test": "default"}
 
 # Params for GTMG
 gt_params_matexp = {'mg_levels': cheby_jacobi,
@@ -208,14 +221,14 @@ gt_params_global_matfree_matexpmg_higherrtol = {'mg_coarse': mgmatfree_mtx_highe
                                                 'mg_levels': cheby_none,
                                                 'mat_type': 'matfree'}
 gt_params_global_matfree_matexpmg_higherrtol_cleanP1 = {'mg_coarse': mgmatfree_mtx_higherrtol_cleanP1,
-                                                'mg_levels': cheby_none,
-                                                'mat_type': 'matfree'}
+                                                        'mg_levels': cheby_none,
+                                                        'mat_type': 'matfree'}
 gt_params_global_matfree_matexpmg_higherrtol_cleanP1_moreits = {'mg_coarse': mgmatfree_mtx_higherrtol_cleanP1,
-                                                'mg_levels': cheby_none_moreits,
-                                                'mat_type': 'matfree'}
+                                                                'mg_levels': cheby_none_moreits,
+                                                                'mat_type': 'matfree'}
 gt_params_global_matfree_matexpmg_higherrtol_cleanP1_moreitsandcg = {'mg_coarse': mgmatfree_mtx_higherrtol_cleanP1,
-                                                'mg_levels': cheby_none_moreitsandcg,
-                                                'mat_type': 'matfree'}
+                                                                     'mg_levels': cheby_none_moreitsandcg,
+                                                                     'mat_type': 'matfree'}
 
 
 # 2) FULL PARAMS
@@ -253,6 +266,20 @@ gtmg_matexpl_params = {'mat_type': 'matfree',
                                                 'mg_coarse': mgmatexp},
                                          'ksp_view': None,
                                          'ksp_monitor': None}}
+
+# These are the tests used for Jacks GTMG test in the Firedrake test suite
+gtmg_matexpl_params_chebynone = {'mat_type': 'matfree',
+                                 'ksp_type': 'preonly',
+                                 'pc_type': 'python',
+                                 'pc_python_type': 'firedrake.HybridizationPC',
+                                 'hybridization': {'ksp_type': 'cg',
+                                                   'pc_type': 'python',
+                                                   'ksp_rtol': 1.e-8,
+                                                   'pc_python_type': 'firedrake.GTMGPC',
+                                                   'gt': {'mg_levels': cheby_none,
+                                                          'mg_coarse': mgmatexp_chebynone},
+                                                   'ksp_view': None,
+                                                   'ksp_monitor': None}}
 
 gtmg_matexpl_params_maxitscg = {'mat_type': 'matfree',
                                 'ksp_type': 'preonly',
@@ -421,46 +448,46 @@ gtmg_global_matfree_params_matexpmg_higherrtol = {'snes_type': 'ksponly',
                                                                     'ksp_monitor': None}}
 
 gtmg_global_matfree_params_matexpmg_higherrtol_cleanP1 = {'snes_type': 'ksponly',
-                                                  'mat_type': 'matfree',
-                                                  'ksp_type': 'preonly',
-                                                  'pc_type': 'python',
-                                                  'pc_python_type': 'firedrake.HybridizationPC',
-                                                  'hybridization': {'ksp_type': 'cg',
-                                                                    'pc_type': 'python',
-                                                                    'mat_type': 'matfree',
-                                                                    'ksp_rtol': 1.e-8,
-                                                                    'pc_python_type': 'firedrake.GTMGPC',
-                                                                    'gt': gt_params_global_matfree_matexpmg_higherrtol_cleanP1,
-                                                                    'ksp_view': None,
-                                                                    'ksp_monitor': None}}
+                                                          'mat_type': 'matfree',
+                                                          'ksp_type': 'preonly',
+                                                          'pc_type': 'python',
+                                                          'pc_python_type': 'firedrake.HybridizationPC',
+                                                          'hybridization': {'ksp_type': 'cg',
+                                                                            'pc_type': 'python',
+                                                                            'mat_type': 'matfree',
+                                                                            'ksp_rtol': 1.e-8,
+                                                                            'pc_python_type': 'firedrake.GTMGPC',
+                                                                            'gt': gt_params_global_matfree_matexpmg_higherrtol_cleanP1,
+                                                                            'ksp_view': None,
+                                                                            'ksp_monitor': None}}
 
 gtmg_global_matfree_params_matexpmg_higherrtol_cleanP1_moreits = {'snes_type': 'ksponly',
-                                                  'mat_type': 'matfree',
-                                                  'ksp_type': 'preonly',
-                                                  'pc_type': 'python',
-                                                  'pc_python_type': 'firedrake.HybridizationPC',
-                                                  'hybridization': {'ksp_type': 'cg',
-                                                                    'pc_type': 'python',
-                                                                    'mat_type': 'matfree',
-                                                                    'ksp_rtol': 1.e-8,
-                                                                    'pc_python_type': 'firedrake.GTMGPC',
-                                                                    'gt': gt_params_global_matfree_matexpmg_higherrtol_cleanP1_moreits,
-                                                                    'ksp_view': None,
-                                                                    'ksp_monitor': None}}
+                                                                  'mat_type': 'matfree',
+                                                                  'ksp_type': 'preonly',
+                                                                  'pc_type': 'python',
+                                                                  'pc_python_type': 'firedrake.HybridizationPC',
+                                                                  'hybridization': {'ksp_type': 'cg',
+                                                                                    'pc_type': 'python',
+                                                                                    'mat_type': 'matfree',
+                                                                                    'ksp_rtol': 1.e-8,
+                                                                                    'pc_python_type': 'firedrake.GTMGPC',
+                                                                                    'gt': gt_params_global_matfree_matexpmg_higherrtol_cleanP1_moreits,
+                                                                                    'ksp_view': None,
+                                                                                    'ksp_monitor': None}}
 
 gtmg_global_matfree_params_matexpmg_higherrtol_cleanP1_moreitsandcg = {'snes_type': 'ksponly',
-                                                  'mat_type': 'matfree',
-                                                  'ksp_type': 'preonly',
-                                                  'pc_type': 'python',
-                                                  'pc_python_type': 'firedrake.HybridizationPC',
-                                                  'hybridization': {'ksp_type': 'cg',
-                                                                    'pc_type': 'python',
-                                                                    'mat_type': 'matfree',
-                                                                    'ksp_rtol': 1.e-8,
-                                                                    'pc_python_type': 'firedrake.GTMGPC',
-                                                                    'gt': gt_params_global_matfree_matexpmg_higherrtol_cleanP1_moreitsandcg,
-                                                                    'ksp_view': None,
-                                                                    'ksp_monitor': None}}
+                                                                       'mat_type': 'matfree',
+                                                                       'ksp_type': 'preonly',
+                                                                       'pc_type': 'python',
+                                                                       'pc_python_type': 'firedrake.HybridizationPC',
+                                                                       'hybridization': {'ksp_type': 'cg',
+                                                                                         'pc_type': 'python',
+                                                                                         'mat_type': 'matfree',
+                                                                                         'ksp_rtol': 1.e-8,
+                                                                                         'pc_python_type': 'firedrake.GTMGPC',
+                                                                                         'gt': gt_params_global_matfree_matexpmg_higherrtol_cleanP1_moreitsandcg,
+                                                                                         'ksp_view': None,
+                                                                                         'ksp_monitor': None}}
 
 gtmg_fully_matfree_params_maxitscg = {'snes_type': 'ksponly',
                                       'mat_type': 'matfree',
