@@ -304,6 +304,23 @@ gtmg_global_matfree_params = {'snes_type': 'ksponly',
                                                 'ksp_view': None,
                                                 'ksp_monitor': None}}
 
+gtmg_global_matfree_params_limitcg = {'snes_type': 'ksponly',
+                                      'mat_type': 'matfree',
+                                      'ksp_type': 'preonly',
+                                      'pc_type': 'python',
+                                      'pc_python_type': 'firedrake.HybridizationPC',
+                                      'hybridization': {'ksp_type': 'cg',
+                                                        'pc_type': 'python',
+                                                        # global matfree
+                                                        'mat_type': 'matfree',
+                                                        'pc_python_type': 'firedrake.GTMGPC',
+                                                        'ksp_rtol': 1.e-8,
+                                                        'ksp_max_it': 7,
+                                                        'gt': gt_params_global_matfree,
+                                                        'ksp_view': None,
+                                                        'ksp_monitor': None}}
+
+
 # These are the tests used for Jacks GTMG test in the Firedrake test suite
 # with globally matrix-free solves on the levels and a nesting of schur complements on the trace solve
 gtmg_global_matfree_nested_schur_params = {'snes_type': 'ksponly',
