@@ -1,3 +1,5 @@
+# from firedrake import *
+
 # Here are parameters defined used in the case files of my setups
 # 1) HELPER DICTs
 
@@ -199,6 +201,15 @@ cheby_none_moreitsandcg = {'ksp_type': 'chebyshev',
                            'ksp_norm_type': 'unpreconditioned',
                            "ksp_convergence_test": "default"}
 
+cheby_assembledjacobi = {'ksp_type': 'chebyshev',
+                     'ksp_max_it': 3,
+                     'pc_type': 'python',
+                     'pc_python_type': 'firedrake.AssembledPC',
+                     'assembled_pc_type': 'jacobi',
+                     'ksp_monitor': None,
+                     'ksp_norm_type': 'preconditioned',
+                     'ksp_monitor_true_residual': None}
+
 # Params for GTMG
 gt_params_matexp = {'mg_levels': cheby_jacobi,
                     'mg_coarse': mgmatexp}
@@ -229,6 +240,10 @@ gt_params_global_matfree_matexpmg_higherrtol_cleanP1_moreits = {'mg_coarse': mgm
 gt_params_global_matfree_matexpmg_higherrtol_cleanP1_moreitsandcg = {'mg_coarse': mgmatfree_mtx_higherrtol_cleanP1,
                                                                      'mg_levels': cheby_none_moreitsandcg,
                                                                      'mat_type': 'matfree'}
+
+gt_params_global_matfree_matexpmg_assembledjacobi = {'mg_coarse': mgmatfree_mtx,
+                                                     'mg_levels': cheby_assembledjacobi,
+                                                     'mat_type': 'matfree'}
 
 
 # 2) FULL PARAMS
@@ -486,6 +501,21 @@ gtmg_global_matfree_params_matexpmg_higherrtol_cleanP1_moreitsandcg = {'snes_typ
                                                                                          'ksp_rtol': 1.e-8,
                                                                                          'pc_python_type': 'firedrake.GTMGPC',
                                                                                          'gt': gt_params_global_matfree_matexpmg_higherrtol_cleanP1_moreitsandcg,
+                                                                                         'ksp_view': None,
+                                                                                         'ksp_monitor': None}}
+
+
+gtmg_global_matfree_params_matexpmg_assembledjacobi = {'snes_type': 'ksponly',
+                                                                       'mat_type': 'matfree',
+                                                                       'ksp_type': 'preonly',
+                                                                       'pc_type': 'python',
+                                                                       'pc_python_type': 'firedrake.HybridizationPC',
+                                                                       'hybridization': {'ksp_type': 'cg',
+                                                                                         'pc_type': 'python',
+                                                                                         'mat_type': 'matfree',
+                                                                                         'ksp_rtol': 1.e-8,
+                                                                                         'pc_python_type': 'firedrake.GTMGPC',
+                                                                                         'gt': gt_params_global_matfree_matexpmg_assembledjacobi,
                                                                                          'ksp_view': None,
                                                                                          'ksp_monitor': None}}
 
