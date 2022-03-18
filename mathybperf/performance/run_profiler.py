@@ -39,24 +39,22 @@ if "log_view" not in OptionsManager.commandline_options:
     PETSc.Log.begin()
 
 # get internal time data of solvers
-petsc_stage_name = "stage"
-with PETSc.Log.Stage(petsc_stage_name):
-    try:
-        quad_degree, (w, w2), (w_t, w_t_exact), mesh = problem(problem_bag, solver_bag,
-                                                               verification=args.verification,
-                                                               project=args.projectexactsol)
-    except Exception as e:
-        VERIFY_STATUS = traceback.format_exc()
-        error = int(not VERIFY_STATUS == "success")
-        PETSc.Sys.Print("\n\n\n-----FAILED WITH AN ERROR ----"
-                        + "\n\n The error message is: " + str(e)
-                        + "\n\nThe following setup was run last.\n"
-                        + str(problem_bag) + "\nSolver parameters:\n"
-                        + str(json.dumps(parameters, indent=4))
-                        + "\n\nThe setup finished with the following status.\n\n"
-                        + str(VERIFY_STATUS))
-        sys.exit(error)
-    internal_timedata_cold = time_data.get_internal_timedata(warmup, mesh.comm)
+try:
+    quad_degree, (w, w2), (w_t, w_t_exact), mesh, solver = problem(problem_bag, solver_bag,
+                                                                    verification=args.verification,
+                                                                    project=args.projectexactsol)
+except Exception as e:
+    VERIFY_STATUS = traceback.format_exc()
+    error = int(not VERIFY_STATUS == "success")
+    PETSc.Sys.Print("\n\n\n-----FAILED WITH AN ERROR ----"
+                    + "\n\n The error message is: " + str(e)
+                    + "\n\nThe following setup was run last.\n"
+                    + str(problem_bag) + "\nSolver parameters:\n"
+                    + str(json.dumps(parameters, indent=4))
+                    + "\n\nThe setup finished with the following status.\n\n"
+                    + str(VERIFY_STATUS))
+    sys.exit(error)
+internal_timedata_cold = time_data.get_internal_timedata(mesh.comm)
 tas_data.update(internal_timedata_cold)
 
 # add further information

@@ -13,10 +13,9 @@ class TimeData(object):
 
     # get internal solver specific times
     # state can be cold or warm
-    def get_internal_timedata(self, stage, comm):
+    def get_internal_timedata(self, comm):
         internal_timedata = {}
 
-        PETSc.Log.Stage(stage).push()
         snes = self.get_time("SNESSolve")
         ksp = self.get_time("KSPSolve")
         pcsetup = self.get_time("PCSetUp")
@@ -34,7 +33,6 @@ class TimeData(object):
         hybridinit = self.get_time("HybridInit")
         hybridupdate = self.get_time("HybridUpdate")  # assembly
         overall = self.get_time("perfsolve")
-        PETSc.Log.Stage(stage).pop()
 
         internal_timedata.update({"snes_time_upd": self.reduce(snes, comm),
                                   "ksp_time_upd": self.reduce(ksp, comm),
