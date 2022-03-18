@@ -219,6 +219,9 @@ gt_params_global_matfree = {'mg_coarse': mgmatfree_mtf,
 gt_params_fully_matfree = {'mg_coarse': mgmatfree_mtf,
                            'mg_levels': cheby_none,
                            'mat_type': 'matfree'}
+gt_params_fully_matfree_matexpmg = {'mg_coarse': mgmatfree_mtx,
+                           'mg_levels': cheby_none,
+                           'mat_type': 'matfree'}
 gt_params_global_matfree_lessitsonlevels = {'mg_coarse': mgmatfree_mtf_lessitsonlevels,
                                             'mg_levels': cheby_none,
                                             'mat_type': 'matfree'}
@@ -255,6 +258,30 @@ hybridization_lu_params = {'mat_type': 'matfree',
                            'hybridization': {'ksp_type': 'preonly', 'pc_type': 'lu', 'pc_factor_mat_solver_type': 'superlu_dist',
                                              'ksp_rtol': 1.e-8, 'ksp_monitor': None},
                            'ksp_view': None}
+
+hybridization_cg_params = {'mat_type': 'matfree',
+                           'ksp_type': 'preonly',
+                           'pc_type': 'python',
+                           'pc_python_type': 'firedrake.HybridizationPC',
+                           'hybridization': {'ksp_type': 'cg', 'pc_type': 'none',
+                                             'ksp_rtol': 1.e-8, 'ksp_monitor': None},
+                           'ksp_view': None}
+
+# Hyridization, globally matfree with CG, used in Thomas' matrix-free hybridization test
+hybridization_fully_matfree_cg = {'mat_type': 'matfree',
+                                   'ksp_type': 'preonly',
+                                   'pc_type': 'python',
+                                   'pc_python_type': 'firedrake.HybridizationPC',
+                                   'hybridization': {'ksp_type': 'cg',
+                                                     'pc_type': 'none',
+                                                     'ksp_rtol': 1.e-8,
+                                                     'mat_type': 'matfree',
+                                                     'localsolve': {'ksp_type': 'preonly',
+                                                                    'mat_type': 'matfree',  # local-matfree!
+                                                                    'pc_type': 'fieldsplit',
+                                                                    'pc_fieldsplit_type': 'schur'},
+                                                     'ksp_view': None,
+                                                     'ksp_monitor': None}}
 
 # Hyridization, globally matfree with CG, used in Thomas' matrix-free hybridization test
 hybridization_global_matfree_cg = {'mat_type': 'matfree',
@@ -325,6 +352,23 @@ gtmg_matexpl_nested_schur_params = {'mat_type': 'matfree',
                                                                      'pc_fieldsplit_type': 'schur'},
                                                       'pc_python_type': 'firedrake.GTMGPC',
                                                       'gt': {'mg_levels': cheby_jacobi,
+                                                             'mg_coarse': mgmatexp}},
+                                    'ksp_view': None,
+                                    'ksp_monitor': None}
+
+gtmg_matexpl_nested_schur_params_chebynone = {'mat_type': 'matfree',
+                                    'ksp_type': 'preonly',
+                                    'pc_type': 'python',
+                                    'pc_python_type': 'firedrake.HybridizationPC',
+                                    'hybridization': {'ksp_type': 'cg',
+                                                      'pc_type': 'python',
+                                                      'ksp_rtol': 1.e-8,
+                                                      # nested schur option
+                                                      'localsolve': {'ksp_type': 'preonly',
+                                                                     'pc_type': 'fieldsplit',
+                                                                     'pc_fieldsplit_type': 'schur'},
+                                                      'pc_python_type': 'firedrake.GTMGPC',
+                                                      'gt': {'mg_levels': cheby_none,
                                                              'mg_coarse': mgmatexp}},
                                     'ksp_view': None,
                                     'ksp_monitor': None}
@@ -402,6 +446,25 @@ gtmg_fully_matfree_params = {'snes_type': 'ksponly',
                                                               'pc_fieldsplit_type': 'schur'},
                                                'pc_python_type': 'firedrake.GTMGPC',
                                                'gt': gt_params_fully_matfree,
+                                               'ksp_view': None,
+                                               'ksp_monitor': None}}
+
+
+gtmg_fully_matfree_params_matexpmg = {'snes_type': 'ksponly',
+                                       'mat_type': 'matfree',
+                                       'ksp_type': 'preonly',
+                                       'pc_type': 'python',
+                             'pc_python_type': 'firedrake.HybridizationPC',
+                             'hybridization': {'ksp_type': 'cg',
+                                               'pc_type': 'python',
+                                               'mat_type': 'matfree',
+                                               'ksp_rtol': 1.e-8,
+                                               'localsolve': {'ksp_type': 'preonly',
+                                                              'mat_type': 'matfree',  # local-matfree!
+                                                              'pc_type': 'fieldsplit',
+                                                              'pc_fieldsplit_type': 'schur'},
+                                               'pc_python_type': 'firedrake.GTMGPC',
+                                               'gt': gt_params_fully_matfree_matexpmg,
                                                'ksp_view': None,
                                                'ksp_monitor': None}}
 
