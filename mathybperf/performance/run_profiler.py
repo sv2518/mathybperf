@@ -84,6 +84,11 @@ if args.projectexactsol:
     tas_data.update(accuracy_data)
     data_to_tex.update(accuracy_data)
 
+# get iterations
+hyb = solver.snes.ksp.pc.getPythonContext()
+# gtmg = hyb.trace_ksp.pc.getPythonContext()
+its = {'outer_its': hyb.trace_ksp.its}
+
 if not args.verification:
     # write out data to .csv
     datafile = pd.DataFrame(tas_data)
@@ -105,3 +110,8 @@ if not args.verification:
     with open(size_table_filename, 'w') as convert_file:
         frame = pd.DataFrame(data_to_tex, index=[0]).to_latex(index=False)
         convert_file.write(frame)
+
+    # also remember which the iteration count
+    paramsfilename = args.name + '_its.json'
+    with open(paramsfilename, 'w') as convert_file:
+        convert_file.write(json.dumps(its, indent=4))
