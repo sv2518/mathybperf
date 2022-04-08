@@ -359,6 +359,25 @@ gtmg_matexpl_nested_schur_params = {'mat_type': 'matfree',
                                     'ksp_view': None,
                                     'ksp_monitor': None}
 
+
+gtmg_matexpl_nested_schur_params_fgmres = {'mat_type': 'matfree',
+                                           'ksp_type': 'preonly',
+                                           'pc_type': 'python',
+                                           'pc_python_type': 'firedrake.HybridizationPC',
+                                           'hybridization': {'ksp_type': 'fgmres',
+                                                             'pc_type': 'python',
+                                                             'ksp_rtol': 1.e-8,
+                                                             # nested schur option
+                                                             'localsolve': {'ksp_type': 'preonly',
+                                                                            'pc_type': 'fieldsplit',
+                                                                            'pc_fieldsplit_type': 'schur'},
+                                                             'pc_python_type': 'firedrake.GTMGPC',
+                                                             'gt': {'mg_levels': cheby_jacobi,
+                                                                    'mg_coarse': mgmatexp}},
+                                           'ksp_view': None,
+                                           'ksp_monitor': None}
+
+
 gtmg_matexpl_nested_schur_params_chebynone = {'mat_type': 'matfree',
                                     'ksp_type': 'preonly',
                                     'pc_type': 'python',
