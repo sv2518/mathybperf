@@ -764,7 +764,29 @@ gtmg_fully_matfree_params_fs0_cg_jacobi = {'snes_type': 'ksponly',
                                                              'pc_python_type': 'firedrake.GTMGPC',
                                                              'gt': gt_params_fully_matfree,
                                                              'ksp_view': None,
-                                                             'ksp_monitor': None}}
+                                                             'ksp_monitor': None,
+                                                             'ksp_converged_reason': None}}
+
+gtmg_fully_matfree_params_fs0_cg_jacobi_fgmres = {'snes_type': 'ksponly',
+                                                  'mat_type': 'matfree',
+                                                  'ksp_type': 'preonly',
+                                                  'pc_type': 'python',
+                                                  'pc_python_type': 'firedrake.HybridizationPC',
+                                                  'hybridization': {'ksp_type': 'fgmres',
+                                                                    'pc_type': 'python',
+                                                                    'mat_type': 'matfree',
+                                                                    'ksp_rtol': 1.e-8,
+                                                                    'localsolve': {'ksp_type': 'preonly',
+                                                                                   'mat_type': 'matfree',  # local-matfree!
+                                                                                   'pc_type': 'fieldsplit',
+                                                                                   'pc_fieldsplit_type': 'schur',
+                                                                                   'fieldsplit_0': {'ksp_type': 'default',
+                                                                                                    'pc_type': 'jacobi'}},
+                                                                    'pc_python_type': 'firedrake.GTMGPC',
+                                                                    'gt': gt_params_fully_matfree,
+                                                                    'ksp_view': None,
+                                                                    'ksp_monitor': None,
+                                                                    'ksp_converged_reason': None}}
 
 # class DGLaplacian(AuxiliaryOperatorPC):
 #     def form(self, pc, u, v):
