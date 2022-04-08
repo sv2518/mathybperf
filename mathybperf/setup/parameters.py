@@ -202,13 +202,13 @@ cheby_none_moreitsandcg = {'ksp_type': 'chebyshev',
                            "ksp_convergence_test": "default"}
 
 cheby_assembledjacobi = {'ksp_type': 'chebyshev',
-                     'ksp_max_it': 3,
-                     'pc_type': 'python',
-                     'pc_python_type': 'firedrake.AssembledPC',
-                     'assembled_pc_type': 'jacobi',
-                     'ksp_monitor': None,
-                     'ksp_norm_type': 'preconditioned',
-                     'ksp_monitor_true_residual': None}
+                         'ksp_max_it': 3,
+                         'pc_type': 'python',
+                         'pc_python_type': 'firedrake.AssembledPC',
+                         'assembled_pc_type': 'jacobi',
+                         'ksp_monitor': None,
+                         'ksp_norm_type': 'preconditioned',
+                         'ksp_monitor_true_residual': None}
 
 # Params for GTMG
 gt_params_matexp = {'mg_levels': cheby_jacobi,
@@ -222,6 +222,9 @@ gt_params_fully_matfree = {'mg_coarse': mgmatfree_mtf,
 gt_params_fully_matfree_matexpmg = {'mg_coarse': mgmatfree_mtx,
                                     'mg_levels': cheby_none,
                                     'mat_type': 'matfree'}
+gt_params_fully_matfree_matexpmg_assembledjacobi = {'mg_coarse': mgmatfree_mtx,
+                                                    'mg_levels': cheby_assembledjacobi,
+                                                    'mat_type': 'matfree'}
 gt_params_global_matfree_lessitsonlevels = {'mg_coarse': mgmatfree_mtf_lessitsonlevels,
                                             'mg_levels': cheby_none,
                                             'mat_type': 'matfree'}
@@ -554,6 +557,27 @@ gtmg_fully_matfree_params_matexpmg_fgmres = {'snes_type': 'ksponly',
                                                         'ksp_monitor': None,
                                                         'ksp_converged_reason': None}}
 
+
+gtmg_fully_matfree_params_matexpmg_fgmres_assembledjacobi = {'snes_type': 'ksponly',
+                                                             'mat_type': 'matfree',
+                                                             'ksp_type': 'preonly',
+                                                             'pc_type': 'python',
+                                                             'pc_python_type': 'firedrake.HybridizationPC',
+                                                             'hybridization': {'ksp_type': 'fgmres',
+                                                                               'pc_type': 'python',
+                                                                               'mat_type': 'matfree',
+                                                                               'ksp_rtol': 1.e-8,
+                                                                               'localsolve': {'ksp_type': 'preonly',
+                                                                                              'mat_type': 'matfree',  # local-matfree!
+                                                                                              'pc_type': 'fieldsplit',
+                                                                                              'pc_fieldsplit_type': 'schur'},
+                                                                               'pc_python_type': 'firedrake.GTMGPC',
+                                                                               'gt': gt_params_fully_matfree_matexpmg_assembledjacobi,
+                                                                               'ksp_view': None,
+                                                                               'ksp_monitor': None,
+                                                                               'ksp_converged_reason': None}}
+
+
 gtmg_global_matfree_params_lessitsonlevels = {'snes_type': 'ksponly',
                                               'mat_type': 'matfree',
                                               'ksp_type': 'preonly',
@@ -655,18 +679,33 @@ gtmg_global_matfree_params_matexpmg_higherrtol_cleanP1_moreitsandcg = {'snes_typ
 
 
 gtmg_global_matfree_params_matexpmg_assembledjacobi = {'snes_type': 'ksponly',
-                                                                       'mat_type': 'matfree',
-                                                                       'ksp_type': 'preonly',
-                                                                       'pc_type': 'python',
-                                                                       'pc_python_type': 'firedrake.HybridizationPC',
-                                                                       'hybridization': {'ksp_type': 'cg',
-                                                                                         'pc_type': 'python',
-                                                                                         'mat_type': 'matfree',
-                                                                                         'ksp_rtol': 1.e-8,
-                                                                                         'pc_python_type': 'firedrake.GTMGPC',
-                                                                                         'gt': gt_params_global_matfree_matexpmg_assembledjacobi,
-                                                                                         'ksp_view': None,
-                                                                                         'ksp_monitor': None}}
+                                                       'mat_type': 'matfree',
+                                                       'ksp_type': 'preonly',
+                                                       'pc_type': 'python',
+                                                       'pc_python_type': 'firedrake.HybridizationPC',
+                                                       'hybridization': {'ksp_type': 'cg',
+                                                                         'pc_type': 'python',
+                                                                         'mat_type': 'matfree',
+                                                                         'ksp_rtol': 1.e-8,
+                                                                         'pc_python_type': 'firedrake.GTMGPC',
+                                                                         'gt': gt_params_global_matfree_matexpmg_assembledjacobi,
+                                                                         'ksp_view': None,
+                                                                         'ksp_monitor': None}}
+
+
+gtmg_global_matfree_params_matexpmg_assembledjacobi_fgmres = {'snes_type': 'ksponly',
+                                                              'mat_type': 'matfree',
+                                                              'ksp_type': 'preonly',
+                                                              'pc_type': 'python',
+                                                              'pc_python_type': 'firedrake.HybridizationPC',
+                                                              'hybridization': {'ksp_type': 'fgmres',
+                                                                                'pc_type': 'python',
+                                                                                'mat_type': 'matfree',
+                                                                                'ksp_rtol': 1.e-8,
+                                                                                'pc_python_type': 'firedrake.GTMGPC',
+                                                                                'gt': gt_params_global_matfree_matexpmg_assembledjacobi,
+                                                                                'ksp_view': None,
+                                                                                'ksp_monitor': None}}
 
 gtmg_fully_matfree_params_maxitscg = {'snes_type': 'ksponly',
                                       'mat_type': 'matfree',
