@@ -46,8 +46,8 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
             fc1 = {}
             fc2 = {}
         w2 = Function(problem_bag.space[0])
-        w2.sub(0).project(ufl.grad(exact_sol), solver_parameters={'ksp_rtol': 1.e-6}, form_compiler_parameters=fc1, use_slate_for_inverse=False)
-        w2.sub(1).project(exact_sol, solver_parameters={'ksp_rtol': 1.e-6}, form_compiler_parameters=fc2, use_slate_for_inverse=False)
+        w2.sub(0).project(ufl.grad(exact_sol), solver_parameters={'ksp_rtol': 1.e-6, 'ksp_atol': 1.e-13}, form_compiler_parameters=fc1, use_slate_for_inverse=False)
+        w2.sub(1).project(exact_sol, solver_parameters={'ksp_rtol': 1.e-6, 'ksp_atol': 1.e-13}, form_compiler_parameters=fc2, use_slate_for_inverse=False)
         w_t_exact = project_trace_solution(w_t.function_space(), exact_sol, degree=fc2['quadrature_degree'])
 
     # verification of error

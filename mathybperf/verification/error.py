@@ -39,10 +39,12 @@ def check_var_problem(a, L, w):
     """Double-checks that the solution is solving the variational problem"""
     A = Tensor(a)
     B = AssembledVector(w)
-    dat1 = assemble(A*B).dat.data
-    dat2 = assemble(L).dat.data
-    assert np.allclose(dat1[0], dat2[0], rtol=1.e-5), "Velocity in solution does not solve the variational problem."
-    assert np.allclose(dat1[1], dat2[1], rtol=1.e-5), "Pressure in solution does not solve the variational problem."
+    sol = assemble(A*B)
+    rhs = assemble(L)
+    dat1 = sol.dat.data
+    dat2 = rhs.dat.data
+    assert np.allclose(dat1[0], dat2[0], rtol=1.e-5, atol=1.e-12), "Velocity in solution does not solve the variational problem. The errornorm is "+str(errornorm(sol, rhs))
+    assert np.allclose(dat1[1], dat2[1], rtol=1.e-5, atol=1.e-12), "Pressure in solution does not solve the variational problem."
 
 
 def project_trace_solution(T, exact_sol, degree):
@@ -61,7 +63,7 @@ def project_trace_solution(T, exact_sol, degree):
 
     w_t_exact = Function(T)
     vpb_t = LinearVariationalProblem(lhs(a_t-l_t), rhs(a_t-l_t), w_t_exact)
-    params = {"ksp_type": "cg", "ksp_rtol": 1e-6, "pc_type": "bjacobi", "sub_pc_type": "icc"}
+    params = {"ksp_type": "cg", "ksp_rtol": 1e-6, "ksp_rtol": 1e-13, "pc_type": "bjacobi", "sub_pc_type": "icc"}
     solver_t = LinearVariationalSolver(vpb_t, solver_parameters=params)
     solver_t.solve()
     return w_t_exact
