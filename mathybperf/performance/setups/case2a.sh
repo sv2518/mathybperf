@@ -1,6 +1,7 @@
 #!/bin/sh
 
 # This run just compares how Jacks GTMG on the trace solve compare to the same setup just globally matrix-free
+# limiting max its = only gives correct solution for low order
 export ORDERS=(0)
 export LEVELS=2
 export SCALING=(1)
