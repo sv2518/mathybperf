@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Same as 4c but with assembled jacobi as smoother
-export ORDERS=(1)
+export ORDERS=(0 1 2 3)
 export LEVELS=2
 export SCALING=(1)
 export DEFORM=(0)
