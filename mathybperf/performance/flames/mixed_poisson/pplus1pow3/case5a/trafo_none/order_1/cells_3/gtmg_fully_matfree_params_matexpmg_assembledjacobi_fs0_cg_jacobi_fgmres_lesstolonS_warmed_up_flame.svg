@@ -1,7 +1,2276 @@
 <?xml version="1.0" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg version="1.1" width="1200" height="65" onload="init(evt)" viewBox="0 0 1200 65" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg version="1.1" width="1200" height="427" onload="init(evt)" viewBox="0 0 1200 427" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
 <!-- NOTES:  -->
-<text  x="600.00" y="26" >ERROR: No valid input provided to flamegraph.pl.</text>
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:13px; fill:rgb(0,0,0); }
+	#search, #ignorecase { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:18px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching, currentSearchTerm, ignorecase, ignorecaseBtn;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		ignorecaseBtn = document.getElementById("ignorecase");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+		currentSearchTerm = null;
+
+		// use GET parameters to restore a flamegraphs state.
+		var params = get_params();
+		if (params.x && params.y)
+			zoom(find_group(document.querySelector('[x="' + params.x + '"][y="' + params.y + '"]')));
+                if (params.s) search(params.s);
+	}
+
+	// event listeners
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom();
+			zoom(target);
+			if (!document.querySelector('.parent')) {
+				clearzoom();
+				return;
+			}
+
+			// set parameters for zoom state
+			var el = target.querySelector("rect");
+			if (el && el.attributes && el.attributes.y && el.attributes._orig_x) {
+				var params = get_params()
+				params.x = el.attributes._orig_x.value;
+				params.y = el.attributes.y.value;
+				history.replaceState(null, null, parse_params(params));
+			}
+		}
+		else if (e.target.id == "unzoom") clearzoom();
+		else if (e.target.id == "search") search_prompt();
+		else if (e.target.id == "ignorecase") toggle_ignorecase();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	// ctrl-I to toggle case-sensitive search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+		else if (e.ctrlKey && e.keyCode === 73) {
+			e.preventDefault();
+			toggle_ignorecase();
+		}
+	}, false)
+
+	// functions
+	function get_params() {
+		var params = {};
+		var paramsarr = window.location.search.substr(1).split('&');
+		for (var i = 0; i < paramsarr.length; ++i) {
+			var tmp = paramsarr[i].split("=");
+			if (!tmp[0] || !tmp[1]) continue;
+			params[tmp[0]]  = decodeURIComponent(tmp[1]);
+		}
+		return params;
+	}
+	function parse_params(params) {
+		var uri = "?";
+		for (var key in params) {
+			uri += key + '=' + encodeURIComponent(params[key]) + '&';
+		}
+		if (uri.slice(-1) == "&")
+			uri = uri.substring(0, uri.length - 1);
+		if (uri == '?')
+			uri = window.location.href.split('?')[0];
+		return uri;
+	}
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 13 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		// Fit in full text width
+		if (/^ *$/.test(txt) || t.getSubStringLength(0, txt.length) < w)
+			return;
+
+		for (var x = txt.length - 2; x > 0; x--) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (1 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+		search();
+	}
+	function unzoom() {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			update_text(el[i]);
+		}
+		search();
+	}
+	function clearzoom() {
+		unzoom();
+
+		// remove zoom state
+		var params = get_params();
+		if (params.x) delete params.x;
+		if (params.y) delete params.y;
+		history.replaceState(null, null, parse_params(params));
+	}
+
+	// search
+	function toggle_ignorecase() {
+		ignorecase = !ignorecase;
+		if (ignorecase) {
+			ignorecaseBtn.classList.add("show");
+		} else {
+			ignorecaseBtn.classList.remove("show");
+		}
+		reset_search();
+		search();
+	}
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+		var params = get_params();
+		delete params.s;
+		history.replaceState(null, null, parse_params(params));
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)"
+			    + (ignorecase ? ", ignoring case" : "")
+			    + "\nPress Ctrl-i to toggle case sensitivity", "");
+			if (term != null) search(term);
+		} else {
+			reset_search();
+			searching = 0;
+			currentSearchTerm = null;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		if (term) currentSearchTerm = term;
+
+		var re = new RegExp(currentSearchTerm, ignorecase ? 'i' : '');
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+		var params = get_params();
+		params.s = currentSearchTerm;
+		history.replaceState(null, null, parse_params(params));
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="427.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="26" >Firedrake example</text>
+<text id="details" x="10.00" y="409" > </text>
+<text id="unzoom" x="10.00" y="26" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="26" >Search</text>
+<text id="ignorecase" x="1174.00" y="26" >ic</text>
+<text id="matched" x="1090.00" y="409" > </text>
+<g id="frames">
+<g >
+<title>Log_Event_mtf_solve_119 (713,604 us, 2.41%)</title><rect x="1096.9" y="327" width="28.5" height="15.0" fill="rgb(148.225863804872,159.59113845037,148.225863804872)" rx="2" ry="2" />
+<text  x="1099.94" y="337.5" >L..</text>
+</g>
+<g >
+<title>Log_Event_subkernel109_cell_to__cell_integral_otherwise (10,715 us, 0.04%)</title><rect x="1093.6" y="343" width="0.5" height="15.0" fill="rgb(107.530060925283,144.915200980629,144.915200980629)" rx="2" ry="2" />
+<text  x="1096.64" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_147 (3,059 us, 0.01%)</title><rect x="1128.2" y="343" width="0.1" height="15.0" fill="rgb(152.020333446332,142.677104456224,152.020333446332)" rx="2" ry="2" />
+<text  x="1131.16" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel89_cell_to__cell_integral_otherwise (6,589 us, 0.02%)</title><rect x="724.3" y="311" width="0.2" height="15.0" fill="rgb(149.117039600206,149.117039600206,114.951807293307)" rx="2" ry="2" />
+<text  x="727.26" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_107 (5,124 us, 0.02%)</title><rect x="754.4" y="327" width="0.2" height="15.0" fill="rgb(125.885426532013,149.673999471263,149.673999471263)" rx="2" ry="2" />
+<text  x="757.38" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel145_cell_to__cell_integral_otherwise (4,047 us, 0.01%)</title><rect x="1037.6" y="327" width="0.2" height="15.0" fill="rgb(153.164754255542,153.164754255542,134.567655238394)" rx="2" ry="2" />
+<text  x="1040.61" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel143_cell_to__cell_integral_otherwise (6,829 us, 0.02%)</title><rect x="1037.3" y="327" width="0.3" height="15.0" fill="rgb(109.876134470744,109.876134470744,148.68570344595)" rx="2" ry="2" />
+<text  x="1040.34" y="337.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspace.VectorFunctionSpace (5,403 us, 0.02%)</title><rect x="99.5" y="71" width="0.2" height="15.0" fill="rgb(154.132160544748,128.346564176403,128.346564176403)" rx="2" ry="2" />
+<text  x="102.46" y="81.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_122 (224,323 us, 0.76%)</title><rect x="765.8" y="343" width="8.9" height="15.0" fill="rgb(145.198502572178,160.083964697552,145.198502572178)" rx="2" ry="2" />
+<text  x="768.80" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_87 (5,051 us, 0.02%)</title><rect x="865.3" y="359" width="0.2" height="15.0" fill="rgb(129.047193917485,129.047193917485,152.396231080803)" rx="2" ry="2" />
+<text  x="868.28" y="369.5" ></text>
+</g>
+<g >
+<title>HybridInit (72,715 us, 0.25%)</title><rect x="1184.4" y="135" width="2.9" height="15.0" fill="rgb(140.424434705264,160.861138536352,140.424434705264)" rx="2" ry="2" />
+<text  x="1187.44" y="145.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_105 (24,239 us, 0.08%)</title><rect x="1016.3" y="311" width="0.9" height="15.0" fill="rgb(122.950371551662,148.913059291172,148.913059291172)" rx="2" ry="2" />
+<text  x="1019.26" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel118_cell_to__cell_integral_otherwise (12,861 us, 0.04%)</title><rect x="1046.1" y="311" width="0.5" height="15.0" fill="rgb(141.335548701597,141.335548701597,154.774622329341)" rx="2" ry="2" />
+<text  x="1049.07" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel109_cell_to__cell_integral_otherwise (32,547 us, 0.11%)</title><rect x="753.1" y="327" width="1.3" height="15.0" fill="rgb(152.090576884099,152.090576884099,129.362026438326)" rx="2" ry="2" />
+<text  x="756.08" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel145_cell_to__cell_integral_otherwise (20,101 us, 0.07%)</title><rect x="853.8" y="327" width="0.8" height="15.0" fill="rgb(142.683539829982,160.49337723698,142.683539829982)" rx="2" ry="2" />
+<text  x="856.82" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_slate_loopy_knl_0 (127,116 us, 0.43%)</title><rect x="692.7" y="215" width="5.1" height="15.0" fill="rgb(137.586988353989,161.32304840749,137.586988353989)" rx="2" ry="2" />
+<text  x="695.72" y="225.5" ></text>
+</g>
+<g >
+<title>CreateFunctionSpace (3,590 us, 0.01%)</title><rect x="969.9" y="295" width="0.1" height="15.0" fill="rgb(152.299989205324,152.299989205324,130.376870764264)" rx="2" ry="2" />
+<text  x="972.90" y="305.5" ></text>
+</g>
+<g >
+<title>KSPSolve (27,037 us, 0.09%)</title><rect x="947.4" y="263" width="1.0" height="15.0" fill="rgb(155.02676830056,135.205223637626,135.205223637626)" rx="2" ry="2" />
+<text  x="950.36" y="273.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_form00_cell_integral_otherwise (3,736 us, 0.01%)</title><rect x="1181.3" y="199" width="0.2" height="15.0" fill="rgb(150.841163416598,150.841163416598,123.30717655736)" rx="2" ry="2" />
+<text  x="1184.31" y="209.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_wrap_slate_loopy_knl_70 (264,477 us, 0.89%)</title><rect x="1164.1" y="263" width="10.5" height="15.0" fill="rgb(152.135673037405,152.135673037405,129.580569335116)" rx="2" ry="2" />
+<text  x="1167.07" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_105 (24,548 us, 0.08%)</title><rect x="700.3" y="263" width="1.0" height="15.0" fill="rgb(136.554091908601,136.554091908601,153.849179079084)" rx="2" ry="2" />
+<text  x="703.29" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel111_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (6,278 us, 0.02%)</title><rect x="729.1" y="263" width="0.2" height="15.0" fill="rgb(111.84818764685,111.84818764685,149.067391157455)" rx="2" ry="2" />
+<text  x="732.09" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel101_cell_to__cell_integral_otherwise (12,219 us, 0.04%)</title><rect x="1042.2" y="343" width="0.5" height="15.0" fill="rgb(124.71391615656,149.370274559108,149.370274559108)" rx="2" ry="2" />
+<text  x="1045.20" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_83 (95,625 us, 0.32%)</title><rect x="1128.5" y="343" width="3.8" height="15.0" fill="rgb(154.256757722961,129.301809209369,129.301809209369)" rx="2" ry="2" />
+<text  x="1131.50" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel149_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (6,506 us, 0.02%)</title><rect x="734.4" y="263" width="0.2" height="15.0" fill="rgb(132.571865539186,92.8404054441629,132.571865539186)" rx="2" ry="2" />
+<text  x="737.35" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel91_cell_to__cell_integral_otherwise (20,223 us, 0.07%)</title><rect x="1131.5" y="359" width="0.8" height="15.0" fill="rgb(152.728522794451,117.585341424124,117.585341424124)" rx="2" ry="2" />
+<text  x="1134.51" y="369.5" ></text>
+</g>
+<g >
+<title>firedrake.mg.interface.prolong (499,398 us, 1.69%)</title><rect x="948.4" y="295" width="20.0" height="15.0" fill="rgb(130.487504556072,150.867130810833,150.867130810833)" rx="2" ry="2" />
+<text  x="951.43" y="305.5" ></text>
+</g>
+<g >
+<title>MatMult (5,177 us, 0.02%)</title><rect x="948.2" y="279" width="0.2" height="15.0" fill="rgb(144.51470983941,144.51470983941,155.389943839886)" rx="2" ry="2" />
+<text  x="951.23" y="289.5" ></text>
+</g>
+<g >
+<title>firedrake.tsfc_interface.compile_form (2,459,799 us, 8.32%)</title><rect x="563.3" y="167" width="98.2" height="15.0" fill="rgb(154.45700272978,130.837020928313,130.837020928313)" rx="2" ry="2" />
+<text  x="566.33" y="177.5" >firedrake...</text>
+</g>
+<g >
+<title>Log_Event_subkernel96_cell_to__cell_integral_otherwise (10,969 us, 0.04%)</title><rect x="1133.0" y="375" width="0.4" height="15.0" fill="rgb(146.512633025093,146.512633025093,155.776638650018)" rx="2" ry="2" />
+<text  x="1136.00" y="385.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel104_cell_to__cell_integral_otherwise (17,815 us, 0.06%)</title><rect x="728.1" y="263" width="0.7" height="15.0" fill="rgb(123.328773606644,149.011163527648,149.011163527648)" rx="2" ry="2" />
+<text  x="731.12" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel148_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (6,357 us, 0.02%)</title><rect x="732.3" y="263" width="0.3" height="15.0" fill="rgb(149.335732468588,159.410462156276,149.335732468588)" rx="2" ry="2" />
+<text  x="735.33" y="273.5" ></text>
+</g>
+<g >
+<title>firedrake.matrix_free.operators.ImplicitMatrixContext.mult (5,162,465 us, 17.45%)</title><rect x="741.4" y="247" width="206.0" height="15.0" fill="rgb(133.458183181815,151.637306750841,151.637306750841)" rx="2" ry="2" />
+<text  x="744.39" y="257.5" >firedrake.matrix_free.op..</text>
+</g>
+<g >
+<title>Log_Event_subkernel148_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (62,200 us, 0.21%)</title><rect x="1143.2" y="327" width="2.5" height="15.0" fill="rgb(122.560255504139,122.560255504139,151.140694613704)" rx="2" ry="2" />
+<text  x="1146.24" y="337.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspace.VectorFunctionSpace (6,797 us, 0.02%)</title><rect x="30.2" y="87" width="0.3" height="15.0" fill="rgb(149.306520824153,149.306520824153,115.870062455509)" rx="2" ry="2" />
+<text  x="33.23" y="97.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel136_cell_to__cell_integral_otherwise (136,449 us, 0.46%)</title><rect x="1110.1" y="375" width="5.5" height="15.0" fill="rgb(146.931942272602,155.130503552156,155.130503552156)" rx="2" ry="2" />
+<text  x="1113.14" y="385.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel86_cell_to__cell_integral_otherwise (11,863 us, 0.04%)</title><rect x="1129.2" y="375" width="0.5" height="15.0" fill="rgb(153.196816207784,153.196816207784,134.723032391567)" rx="2" ry="2" />
+<text  x="1132.19" y="385.5" ></text>
+</g>
+<g >
+<title>MatMult (2,524,766 us, 8.54%)</title><rect x="1056.6" y="247" width="100.7" height="15.0" fill="rgb(156.496160218771,146.470561677242,146.470561677242)" rx="2" ry="2" />
+<text  x="1059.58" y="257.5" >MatMult</text>
+</g>
+<g >
+<title>Log_Event_subkernel152_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (7,896 us, 0.03%)</title><rect x="562.8" y="231" width="0.3" height="15.0" fill="rgb(155.361767015312,137.77354711739,137.77354711739)" rx="2" ry="2" />
+<text  x="565.83" y="241.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (111,426 us, 0.38%)</title><rect x="558.7" y="183" width="4.4" height="15.0" fill="rgb(136.668927395938,136.668927395938,153.87140530244)" rx="2" ry="2" />
+<text  x="561.70" y="193.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel1_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (3,935 us, 0.01%)</title><rect x="176.2" y="215" width="0.2" height="15.0" fill="rgb(105.962047524735,144.508678987894,144.508678987894)" rx="2" ry="2" />
+<text  x="179.22" y="225.5" ></text>
+</g>
+<g >
+<title>firedrake.mg.embedded.TransferManager.op (499,398 us, 1.69%)</title><rect x="948.4" y="279" width="20.0" height="15.0" fill="rgb(119.449402150223,119.449402150223,150.538593964559)" rx="2" ry="2" />
+<text  x="951.43" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel89_cell_to__cell_integral_otherwise (32,776 us, 0.11%)</title><rect x="864.0" y="359" width="1.3" height="15.0" fill="rgb(145.102932096157,154.656315728633,154.656315728633)" rx="2" ry="2" />
+<text  x="866.98" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel109_cell_to__cell_integral_otherwise (6,639 us, 0.02%)</title><rect x="701.0" y="279" width="0.3" height="15.0" fill="rgb(156.651977036995,147.665157283626,147.665157283626)" rx="2" ry="2" />
+<text  x="704.00" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel135_cell_to__cell_integral_otherwise (19,869 us, 0.07%)</title><rect x="710.8" y="311" width="0.8" height="15.0" fill="rgb(126.825623093687,126.825623093687,151.966249631036)" rx="2" ry="2" />
+<text  x="713.79" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel128_cell_to__cell_integral_otherwise (12,212 us, 0.04%)</title><rect x="1022.0" y="343" width="0.5" height="15.0" fill="rgb(133.71085269355,161.954047235934,133.71085269355)" rx="2" ry="2" />
+<text  x="1025.00" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel20_cell_to__cell_integral_otherwise (8,800 us, 0.03%)</title><rect x="694.8" y="263" width="0.4" height="15.0" fill="rgb(156.335165340367,145.236267609481,145.236267609481)" rx="2" ry="2" />
+<text  x="697.85" y="273.5" ></text>
+</g>
+<g >
+<title>CreateFunctionSpace (6,797 us, 0.02%)</title><rect x="30.2" y="103" width="0.3" height="15.0" fill="rgb(152.454925715469,115.487763818596,115.487763818596)" rx="2" ry="2" />
+<text  x="33.23" y="113.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_112 (45,010 us, 0.15%)</title><rect x="701.3" y="263" width="1.8" height="15.0" fill="rgb(154.182233496483,128.730456806371,128.730456806371)" rx="2" ry="2" />
+<text  x="704.27" y="273.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (8,063 us, 0.03%)</title><rect x="1181.1" y="183" width="0.4" height="15.0" fill="rgb(146.394032512368,146.394032512368,155.753683712071)" rx="2" ry="2" />
+<text  x="1184.14" y="193.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel1_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (7,977 us, 0.03%)</title><rect x="176.4" y="215" width="0.3" height="15.0" fill="rgb(130.645283815753,130.645283815753,152.705538803049)" rx="2" ry="2" />
+<text  x="179.38" y="225.5" ></text>
+</g>
+<g >
+<title>PCSetUp (72,715 us, 0.25%)</title><rect x="1184.4" y="119" width="2.9" height="15.0" fill="rgb(155.667156318071,140.114865105213,140.114865105213)" rx="2" ry="2" />
+<text  x="1187.44" y="129.5" ></text>
+</g>
+<g >
+<title>firedrake.formmanipulation.split_form (3,214 us, 0.01%)</title><rect x="1189.9" y="151" width="0.1" height="15.0" fill="rgb(116.311984627963,116.311984627963,149.931351863477)" rx="2" ry="2" />
+<text  x="1192.87" y="161.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel146_cell_to__cell_integral_otherwise (19,407 us, 0.07%)</title><rect x="722.4" y="279" width="0.8" height="15.0" fill="rgb(153.851103779749,153.851103779749,137.893810624938)" rx="2" ry="2" />
+<text  x="725.44" y="289.5" ></text>
+</g>
+<g >
+<title>pyop2.global_kernel.GlobalKernel.compile (9,097,855 us, 30.76%)</title><rect x="176.7" y="199" width="363.0" height="15.0" fill="rgb(150.674215253782,150.674215253782,122.498120076022)" rx="2" ry="2" />
+<text  x="179.70" y="209.5" >pyop2.global_kernel.GlobalKernel.compile</text>
+</g>
+<g >
+<title>Log_Event_subkernel125_cell_to__cell_integral_otherwise (20,210 us, 0.07%)</title><rect x="769.5" y="359" width="0.8" height="15.0" fill="rgb(121.8835999822,148.636488884274,148.636488884274)" rx="2" ry="2" />
+<text  x="772.49" y="369.5" ></text>
+</g>
+<g >
+<title>CreateFunctionSpace (5,403 us, 0.02%)</title><rect x="99.5" y="87" width="0.2" height="15.0" fill="rgb(153.143486986844,120.766733565806,120.766733565806)" rx="2" ry="2" />
+<text  x="102.46" y="97.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel99_cell_to__cell_integral_otherwise (6,567 us, 0.02%)</title><rect x="726.6" y="311" width="0.3" height="15.0" fill="rgb(155.596699407581,155.596699407581,146.353235590584)" rx="2" ry="2" />
+<text  x="729.65" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel111_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (31,071 us, 0.11%)</title><rect x="887.2" y="311" width="1.3" height="15.0" fill="rgb(145.783538419407,154.832769219846,154.832769219846)" rx="2" ry="2" />
+<text  x="890.23" y="321.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (37,775 us, 0.13%)</title><rect x="28.7" y="103" width="1.5" height="15.0" fill="rgb(152.565293972916,152.565293972916,131.662578484132)" rx="2" ry="2" />
+<text  x="31.72" y="113.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_171 (7,114 us, 0.02%)</title><rect x="559.8" y="263" width="0.3" height="15.0" fill="rgb(149.347437518897,159.40855668297,149.347437518897)" rx="2" ry="2" />
+<text  x="562.77" y="273.5" ></text>
+</g>
+<g >
+<title>MatMultTranspose (13,780 us, 0.05%)</title><rect x="968.6" y="263" width="0.6" height="15.0" fill="rgb(138.392719730637,152.916631041276,152.916631041276)" rx="2" ry="2" />
+<text  x="971.63" y="273.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_slate_loopy_knl_79 (1,068,884 us, 3.61%)</title><rect x="698.6" y="231" width="42.6" height="15.0" fill="rgb(149.861284457878,149.861284457878,118.558532372795)" rx="2" ry="2" />
+<text  x="701.57" y="241.5" >Par..</text>
+</g>
+<g >
+<title>Log_Event_subkernel149_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (61,126 us, 0.21%)</title><rect x="1146.5" y="327" width="2.5" height="15.0" fill="rgb(148.184262748396,148.184262748396,110.431427165303)" rx="2" ry="2" />
+<text  x="1149.55" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_130 (369,447 us, 1.25%)</title><rect x="706.7" y="279" width="14.7" height="15.0" fill="rgb(119.906512759275,119.906512759275,150.627066985666)" rx="2" ry="2" />
+<text  x="709.66" y="289.5" ></text>
+</g>
+<g >
+<title>firedrake.mg.interface.restrict (13,780 us, 0.05%)</title><rect x="968.6" y="279" width="0.6" height="15.0" fill="rgb(149.138585289939,159.442555883033,149.138585289939)" rx="2" ry="2" />
+<text  x="971.63" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel116_cell_to__cell_integral_otherwise (31,764 us, 0.11%)</title><rect x="1095.5" y="343" width="1.3" height="15.0" fill="rgb(141.814495865294,141.814495865294,154.867321780379)" rx="2" ry="2" />
+<text  x="1098.55" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel111_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (31,722 us, 0.11%)</title><rect x="886.0" y="311" width="1.2" height="15.0" fill="rgb(150.041847311935,150.041847311935,119.433567742453)" rx="2" ry="2" />
+<text  x="888.97" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_51 (3,737 us, 0.01%)</title><rect x="696.8" y="263" width="0.1" height="15.0" fill="rgb(155.084426715523,135.647271485677,135.647271485677)" rx="2" ry="2" />
+<text  x="699.75" y="273.5" ></text>
+</g>
+<g >
+<title>perfsolve (27,305,559 us, 92.32%)</title><rect x="100.6" y="71" width="1089.4" height="15.0" fill="rgb(133.365747041423,151.613341825554,151.613341825554)" rx="2" ry="2" />
+<text  x="103.59" y="81.5" >perfsolve</text>
+</g>
+<g >
+<title>Log_Event_subkernel13_cell_to__cell_integral_otherwise (10,459 us, 0.04%)</title><rect x="694.4" y="263" width="0.4" height="15.0" fill="rgb(139.277753003078,161.047807650662,139.277753003078)" rx="2" ry="2" />
+<text  x="697.43" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_124 (5,125 us, 0.02%)</title><rect x="774.1" y="359" width="0.3" height="15.0" fill="rgb(148.956870793036,148.956870793036,114.175604612407)" rx="2" ry="2" />
+<text  x="777.15" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_134 (5,288 us, 0.02%)</title><rect x="715.0" y="311" width="0.2" height="15.0" fill="rgb(147.476758100012,147.476758100012,155.963243503228)" rx="2" ry="2" />
+<text  x="717.97" y="321.5" ></text>
+</g>
+<g >
+<title>MatResidual (1,047,579 us, 3.54%)</title><rect x="1014.6" y="215" width="41.8" height="15.0" fill="rgb(156.754501175118,148.451175675904,148.451175675904)" rx="2" ry="2" />
+<text  x="1017.60" y="225.5" >Mat..</text>
+</g>
+<g >
+<title>Log_Event_subkernel121_cell_to__cell_integral_otherwise (83,250 us, 0.28%)</title><rect x="774.7" y="343" width="3.4" height="15.0" fill="rgb(120.815324660244,148.359528615619,148.359528615619)" rx="2" ry="2" />
+<text  x="777.75" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel143_cell_to__cell_integral_otherwise (34,390 us, 0.12%)</title><rect x="852.4" y="327" width="1.4" height="15.0" fill="rgb(144.933264277546,160.127143024585,144.933264277546)" rx="2" ry="2" />
+<text  x="855.45" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_85 (39,780 us, 0.13%)</title><rect x="1128.8" y="359" width="1.6" height="15.0" fill="rgb(149.761109684079,149.761109684079,118.07307000746)" rx="2" ry="2" />
+<text  x="1131.77" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel149_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (37,894 us, 0.13%)</title><rect x="734.6" y="263" width="1.5" height="15.0" fill="rgb(152.669790205964,152.669790205964,132.168983305825)" rx="2" ry="2" />
+<text  x="737.61" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_82 (583,463 us, 1.97%)</title><rect x="859.1" y="311" width="23.3" height="15.0" fill="rgb(142.511453802711,160.521391241419,142.511453802711)" rx="2" ry="2" />
+<text  x="862.11" y="321.5" >L..</text>
+</g>
+<g >
+<title>ParLoopExecute (264,477 us, 0.89%)</title><rect x="1164.1" y="247" width="10.5" height="15.0" fill="rgb(154.919457323348,134.382506145665,134.382506145665)" rx="2" ry="2" />
+<text  x="1167.07" y="257.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel91_cell_to__cell_integral_otherwise (13,241 us, 0.04%)</title><rect x="725.2" y="295" width="0.6" height="15.0" fill="rgb(149.027260968512,159.460678446986,149.027260968512)" rx="2" ry="2" />
+<text  x="728.24" y="305.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel1_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (7,774 us, 0.03%)</title><rect x="175.9" y="215" width="0.3" height="15.0" fill="rgb(146.260929736775,127.918632450486,146.260929736775)" rx="2" ry="2" />
+<text  x="178.91" y="225.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_134 (25,096 us, 0.08%)</title><rect x="820.7" y="359" width="1.0" height="15.0" fill="rgb(134.279243386964,161.861518518401,134.279243386964)" rx="2" ry="2" />
+<text  x="823.66" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel149_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (6,505 us, 0.02%)</title><rect x="1049.6" y="311" width="0.3" height="15.0" fill="rgb(152.224564624901,113.721662124242,113.721662124242)" rx="2" ry="2" />
+<text  x="1052.59" y="321.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspacedata.get_shared_data (5,913 us, 0.02%)</title><rect x="1185.1" y="183" width="0.3" height="15.0" fill="rgb(118.395902247742,118.395902247742,150.334690757627)" rx="2" ry="2" />
+<text  x="1188.14" y="193.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_83 (59,963 us, 0.20%)</title><rect x="723.4" y="279" width="2.4" height="15.0" fill="rgb(153.855612798166,126.226364785938,126.226364785938)" rx="2" ry="2" />
+<text  x="726.38" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel99_cell_to__cell_integral_otherwise (32,373 us, 0.11%)</title><rect x="875.3" y="359" width="1.3" height="15.0" fill="rgb(127.595725609369,127.595725609369,152.115301730846)" rx="2" ry="2" />
+<text  x="878.33" y="369.5" ></text>
+</g>
+<g >
+<title>firedrake.matrix_free.operators.ImplicitMatrixContext.mult (1,081,681 us, 3.66%)</title><rect x="698.1" y="199" width="43.1" height="15.0" fill="rgb(155.872807159436,141.691521555677,141.691521555677)" rx="2" ry="2" />
+<text  x="701.06" y="209.5" >fir..</text>
+</g>
+<g >
+<title>Log_Event_subkernel136_cell_to__cell_integral_otherwise (412,770 us, 1.40%)</title><rect x="804.2" y="359" width="16.5" height="15.0" fill="rgb(123.179897566017,148.972566035634,148.972566035634)" rx="2" ry="2" />
+<text  x="807.20" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel111_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (61,482 us, 0.21%)</title><rect x="1138.0" y="327" width="2.4" height="15.0" fill="rgb(134.331722001525,134.331722001525,153.419042968037)" rx="2" ry="2" />
+<text  x="1140.96" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel118_cell_to__cell_integral_otherwise (62,993 us, 0.21%)</title><rect x="895.9" y="311" width="2.5" height="15.0" fill="rgb(127.983906948136,162.886340729373,127.983906948136)" rx="2" ry="2" />
+<text  x="898.93" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel131_cell_to__cell_integral_otherwise (380,475 us, 1.29%)</title><rect x="823.2" y="343" width="15.2" height="15.0" fill="rgb(135.066135117377,99.2319712382778,135.066135117377)" rx="2" ry="2" />
+<text  x="826.20" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel111_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (6,523 us, 0.02%)</title><rect x="728.8" y="263" width="0.3" height="15.0" fill="rgb(141.982114045138,160.607562829861,141.982114045138)" rx="2" ry="2" />
+<text  x="731.83" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel133_cell_to__cell_integral_otherwise (33,812 us, 0.11%)</title><rect x="709.4" y="311" width="1.4" height="15.0" fill="rgb(136.083724692671,101.839544524968,136.083724692671)" rx="2" ry="2" />
+<text  x="712.44" y="321.5" ></text>
+</g>
+<g >
+<title>MatZeroInitial (23,019 us, 0.08%)</title><rect x="1178.9" y="263" width="0.9" height="15.0" fill="rgb(151.488630197708,151.488630197708,126.444900188895)" rx="2" ry="2" />
+<text  x="1181.86" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel73_cell_to__cell_integral_otherwise (5,815 us, 0.02%)</title><rect x="1173.3" y="279" width="0.2" height="15.0" fill="rgb(125.935603561325,163.219785466761,125.935603561325)" rx="2" ry="2" />
+<text  x="1176.30" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_93 (278,346 us, 0.94%)</title><rect x="871.3" y="327" width="11.1" height="15.0" fill="rgb(154.975119463595,134.809249220893,134.809249220893)" rx="2" ry="2" />
+<text  x="874.28" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_120 (125,691 us, 0.42%)</title><rect x="1097.5" y="343" width="5.0" height="15.0" fill="rgb(153.510707024649,153.510707024649,136.244195580989)" rx="2" ry="2" />
+<text  x="1100.50" y="353.5" ></text>
+</g>
+<g >
+<title>firedrake.formmanipulation.ExtractSubBlock.split (3,214 us, 0.01%)</title><rect x="1189.9" y="167" width="0.1" height="15.0" fill="rgb(129.016143108557,150.485666731848,150.485666731848)" rx="2" ry="2" />
+<text  x="1192.87" y="177.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel84_cell_to__cell_integral_otherwise (85,383 us, 0.29%)</title><rect x="865.5" y="343" width="3.4" height="15.0" fill="rgb(155.75400331952,140.780692116323,140.780692116323)" rx="2" ry="2" />
+<text  x="868.49" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel128_cell_to__cell_integral_otherwise (61,701 us, 0.21%)</title><rect x="778.1" y="343" width="2.4" height="15.0" fill="rgb(131.118124731832,162.376119229702,131.118124731832)" rx="2" ry="2" />
+<text  x="781.07" y="353.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspacedata.get_shared_data (6,797 us, 0.02%)</title><rect x="30.2" y="135" width="0.3" height="15.0" fill="rgb(132.017710333427,132.017710333427,152.971169741954)" rx="2" ry="2" />
+<text  x="33.23" y="145.5" ></text>
+</g>
+<g >
+<title>firedrake.interpolation.make_interpolator (27,514 us, 0.09%)</title><rect x="1001.2" y="311" width="1.1" height="15.0" fill="rgb(138.532096300208,108.113496769283,138.532096300208)" rx="2" ry="2" />
+<text  x="1004.22" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel28_cell_to__cell_integral_otherwise (3,158 us, 0.01%)</title><rect x="695.9" y="247" width="0.1" height="15.0" fill="rgb(114.264468938985,146.661158613811,146.661158613811)" rx="2" ry="2" />
+<text  x="698.87" y="257.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel148_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (10,366 us, 0.04%)</title><rect x="1142.8" y="327" width="0.4" height="15.0" fill="rgb(134.321608336975,161.854621898632,134.321608336975)" rx="2" ry="2" />
+<text  x="1145.83" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel99_cell_to__cell_integral_otherwise (6,562 us, 0.02%)</title><rect x="1041.9" y="359" width="0.3" height="15.0" fill="rgb(155.337751794847,155.337751794847,145.098335621184)" rx="2" ry="2" />
+<text  x="1044.93" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel98_cell_to__cell_integral_otherwise (4,076 us, 0.01%)</title><rect x="726.5" y="311" width="0.1" height="15.0" fill="rgb(134.663904639221,98.2012556380049,134.663904639221)" rx="2" ry="2" />
+<text  x="729.48" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel80_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (235,670 us, 0.80%)</title><rect x="937.8" y="311" width="9.4" height="15.0" fill="rgb(152.019616056946,112.150389769918,112.150389769918)" rx="2" ry="2" />
+<text  x="940.79" y="321.5" ></text>
+</g>
+<g >
+<title>firedrake.interpolation.make_interpolator (38,695 us, 0.13%)</title><rect x="1185.6" y="151" width="1.5" height="15.0" fill="rgb(150.890836500563,150.890836500563,123.547899964268)" rx="2" ry="2" />
+<text  x="1188.57" y="161.5" ></text>
+</g>
+<g >
+<title>CreateFunctionSpace (13,427 us, 0.05%)</title><rect x="30.5" y="71" width="0.5" height="15.0" fill="rgb(143.804818187422,143.804818187422,155.25254545563)" rx="2" ry="2" />
+<text  x="33.50" y="81.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (1,689,251 us, 5.71%)</title><rect x="1089.9" y="279" width="67.4" height="15.0" fill="rgb(122.304415907859,148.745589309445,148.745589309445)" rx="2" ry="2" />
+<text  x="1092.91" y="289.5" >ParLoo..</text>
+</g>
+<g >
+<title>Log_Event_subkernel80_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (39,790 us, 0.13%)</title><rect x="1052.9" y="311" width="1.6" height="15.0" fill="rgb(121.970248181132,121.970248181132,151.026499647961)" rx="2" ry="2" />
+<text  x="1055.92" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_95 (24,269 us, 0.08%)</title><rect x="1041.2" y="343" width="1.0" height="15.0" fill="rgb(130.263157871124,130.263157871124,152.631578942798)" rx="2" ry="2" />
+<text  x="1044.23" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel89_cell_to__cell_integral_otherwise (10,602 us, 0.04%)</title><rect x="1129.9" y="375" width="0.5" height="15.0" fill="rgb(124.848145796583,163.396813474975,124.848145796583)" rx="2" ry="2" />
+<text  x="1132.94" y="385.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_95 (24,240 us, 0.08%)</title><rect x="725.9" y="295" width="1.0" height="15.0" fill="rgb(149.390824352156,149.390824352156,116.278610321986)" rx="2" ry="2" />
+<text  x="728.94" y="305.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel135_cell_to__cell_integral_otherwise (31,611 us, 0.11%)</title><rect x="1108.9" y="375" width="1.2" height="15.0" fill="rgb(137.719585841354,152.742114847758,152.742114847758)" rx="2" ry="2" />
+<text  x="1111.88" y="385.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_142 (45,486 us, 0.15%)</title><rect x="721.4" y="263" width="1.8" height="15.0" fill="rgb(125.79580078995,163.24254405745,125.79580078995)" rx="2" ry="2" />
+<text  x="724.40" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel96_cell_to__cell_integral_otherwise (6,720 us, 0.02%)</title><rect x="726.2" y="311" width="0.3" height="15.0" fill="rgb(151.935615531648,151.935615531648,128.61105988414)" rx="2" ry="2" />
+<text  x="729.21" y="321.5" ></text>
+</g>
+<g >
+<title>firedrake.assemble.allocate_matrix (129,286 us, 0.44%)</title><rect x="1174.6" y="247" width="5.2" height="15.0" fill="rgb(152.771103896607,152.771103896607,132.659965037405)" rx="2" ry="2" />
+<text  x="1177.63" y="257.5" ></text>
+</g>
+<g >
+<title>KSPSolve (6,847,978 us, 23.15%)</title><rect x="741.4" y="215" width="273.2" height="15.0" fill="rgb(151.207855553725,151.207855553725,125.08422306805)" rx="2" ry="2" />
+<text  x="744.39" y="225.5" >KSPSolve</text>
+</g>
+<g >
+<title>Log_Event_slate_loopy_knl_79 (1,040,815 us, 3.52%)</title><rect x="1014.9" y="295" width="41.5" height="15.0" fill="rgb(132.575875485898,162.138810967412,132.575875485898)" rx="2" ry="2" />
+<text  x="1017.87" y="305.5" >Log..</text>
+</g>
+<g >
+<title>Log_Event_subkernel99_cell_to__cell_integral_otherwise (10,735 us, 0.04%)</title><rect x="1133.7" y="375" width="0.4" height="15.0" fill="rgb(151.961051388541,151.961051388541,128.734325959853)" rx="2" ry="2" />
+<text  x="1136.70" y="385.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel80_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (40,374 us, 0.14%)</title><rect x="737.7" y="263" width="1.6" height="15.0" fill="rgb(140.1746027991,160.901808846658,140.1746027991)" rx="2" ry="2" />
+<text  x="740.69" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel96_cell_to__cell_integral_otherwise (33,755 us, 0.11%)</title><rect x="873.2" y="359" width="1.3" height="15.0" fill="rgb(132.483556481961,162.153839642472,132.483556481961)" rx="2" ry="2" />
+<text  x="876.17" y="369.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_pyop2_kernel_uniform_extrusion (37,775 us, 0.13%)</title><rect x="28.7" y="119" width="1.5" height="15.0" fill="rgb(128.622956390724,162.782309424766,128.622956390724)" rx="2" ry="2" />
+<text  x="31.72" y="129.5" ></text>
+</g>
+<g >
+<title>firedrake.bcs.BCBase.set (3,984 us, 0.01%)</title><rect x="947.2" y="263" width="0.2" height="15.0" fill="rgb(150.608919526132,150.608919526132,122.18168693433)" rx="2" ry="2" />
+<text  x="950.20" y="273.5" ></text>
+</g>
+<g >
+<title>SCBackSub (14,058,000 us, 47.53%)</title><rect x="100.6" y="151" width="560.9" height="15.0" fill="rgb(148.188533700421,159.597215444117,148.188533700421)" rx="2" ry="2" />
+<text  x="103.59" y="161.5" >SCBackSub</text>
+</g>
+<g >
+<title>PCSetUp (3,120,065 us, 10.55%)</title><rect x="1056.4" y="199" width="124.5" height="15.0" fill="rgb(133.774720982737,151.719372106636,151.719372106636)" rx="2" ry="2" />
+<text  x="1059.40" y="209.5" >PCSetUp</text>
+</g>
+<g >
+<title>Log_Event_subkernel8_cell_to__cell_integral_otherwise (3,199 us, 0.01%)</title><rect x="695.6" y="279" width="0.1" height="15.0" fill="rgb(135.004751583367,135.004751583367,153.549306758071)" rx="2" ry="2" />
+<text  x="698.58" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel84_cell_to__cell_integral_otherwise (28,889 us, 0.10%)</title><rect x="1130.4" y="359" width="1.1" height="15.0" fill="rgb(150.163412422934,137.918744333769,150.163412422934)" rx="2" ry="2" />
+<text  x="1133.36" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_132 (199,289 us, 0.67%)</title><rect x="1023.3" y="343" width="7.9" height="15.0" fill="rgb(134.586523286274,134.586523286274,153.46835934573)" rx="2" ry="2" />
+<text  x="1026.29" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_137 (11,704 us, 0.04%)</title><rect x="1115.9" y="375" width="0.5" height="15.0" fill="rgb(155.41439345652,138.177016499989,138.177016499989)" rx="2" ry="2" />
+<text  x="1118.91" y="385.5" ></text>
+</g>
+<g >
+<title>firedrake.mg.interface.inject (760,585 us, 2.57%)</title><rect x="970.0" y="311" width="30.4" height="15.0" fill="rgb(149.783926006036,159.337500417622,149.783926006036)" rx="2" ry="2" />
+<text  x="973.04" y="321.5" >f..</text>
+</g>
+<g >
+<title>Log_Event_subkernel149_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (10,269 us, 0.03%)</title><rect x="1146.1" y="327" width="0.4" height="15.0" fill="rgb(125.951220113647,163.217243237313,125.951220113647)" rx="2" ry="2" />
+<text  x="1149.14" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_49 (9,245 us, 0.03%)</title><rect x="696.5" y="247" width="0.4" height="15.0" fill="rgb(129.239487039323,162.681943970343,129.239487039323)" rx="2" ry="2" />
+<text  x="699.53" y="257.5" ></text>
+</g>
+<g >
+<title>MatMult (5,162,465 us, 17.45%)</title><rect x="741.4" y="231" width="206.0" height="15.0" fill="rgb(109.907581869961,145.531595299619,145.531595299619)" rx="2" ry="2" />
+<text  x="744.39" y="241.5" >MatMult</text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_par_loop_kernel (900,348 us, 3.04%)</title><rect x="139.5" y="215" width="35.9" height="15.0" fill="rgb(148.825638584835,148.825638584835,113.539633141891)" rx="2" ry="2" />
+<text  x="142.53" y="225.5" >Pa..</text>
+</g>
+<g >
+<title>ParLoopExecute (5,151,421 us, 17.42%)</title><rect x="741.7" y="263" width="205.5" height="15.0" fill="rgb(150.803838449485,150.803838449485,123.126294024428)" rx="2" ry="2" />
+<text  x="744.67" y="273.5" >ParLoopExecute</text>
+</g>
+<g >
+<title>Log_Event_subkernel146_cell_to__cell_integral_otherwise (31,725 us, 0.11%)</title><rect x="1126.9" y="343" width="1.3" height="15.0" fill="rgb(135.687459912342,161.632273967758,135.687459912342)" rx="2" ry="2" />
+<text  x="1129.90" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel94_cell_to__cell_integral_otherwise (78,667 us, 0.27%)</title><rect x="879.2" y="343" width="3.2" height="15.0" fill="rgb(132.056625007501,151.273939816759,151.273939816759)" rx="2" ry="2" />
+<text  x="882.25" y="353.5" ></text>
+</g>
+<g >
+<title>firedrake.pointquery_utils.to_reference_coordinates (312,549 us, 1.06%)</title><rect x="955.9" y="311" width="12.5" height="15.0" fill="rgb(156.665646541208,147.769956815926,147.769956815926)" rx="2" ry="2" />
+<text  x="958.89" y="321.5" ></text>
+</g>
+<g >
+<title>firedrake.tsfc_interface.compile_form (38,584 us, 0.13%)</title><rect x="1188.5" y="135" width="1.5" height="15.0" fill="rgb(152.054889125423,112.420816628247,112.420816628247)" rx="2" ry="2" />
+<text  x="1191.46" y="145.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel77_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (3,379 us, 0.01%)</title><rect x="1173.8" y="279" width="0.1" height="15.0" fill="rgb(118.03081533723,147.637618791134,147.637618791134)" rx="2" ry="2" />
+<text  x="1176.76" y="289.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_slate_loopy_knl_79 (1,047,579 us, 3.54%)</title><rect x="1014.6" y="279" width="41.8" height="15.0" fill="rgb(123.996935222922,163.535382638129,123.996935222922)" rx="2" ry="2" />
+<text  x="1017.60" y="289.5" >Par..</text>
+</g>
+<g >
+<title>firedrake.mg.embedded.TransferManager.op (760,585 us, 2.57%)</title><rect x="970.0" y="295" width="30.4" height="15.0" fill="rgb(117.287202799082,117.287202799082,150.120103767564)" rx="2" ry="2" />
+<text  x="973.04" y="305.5" >f..</text>
+</g>
+<g >
+<title>firedrake.ufl_expr.adjoint (8,943 us, 0.03%)</title><rect x="100.1" y="103" width="0.3" height="15.0" fill="rgb(125.145255250545,163.348446819679,125.145255250545)" rx="2" ry="2" />
+<text  x="103.09" y="113.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel98_cell_to__cell_integral_otherwise (20,379 us, 0.07%)</title><rect x="874.5" y="359" width="0.8" height="15.0" fill="rgb(125.514915203046,149.577940978567,149.577940978567)" rx="2" ry="2" />
+<text  x="877.52" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel182_cell_to__cell_integral_otherwise (5,495 us, 0.02%)</title><rect x="560.6" y="279" width="0.2" height="15.0" fill="rgb(133.958621349568,133.958621349568,153.346829938626)" rx="2" ry="2" />
+<text  x="563.57" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel148_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (10,421 us, 0.04%)</title><rect x="1142.4" y="327" width="0.4" height="15.0" fill="rgb(144.272480788968,122.823232021729,144.272480788968)" rx="2" ry="2" />
+<text  x="1145.41" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel121_cell_to__cell_integral_otherwise (16,930 us, 0.06%)</title><rect x="1021.3" y="343" width="0.7" height="15.0" fill="rgb(152.707838185455,152.707838185455,132.353369667976)" rx="2" ry="2" />
+<text  x="1024.33" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel135_cell_to__cell_integral_otherwise (19,504 us, 0.07%)</title><rect x="1026.6" y="359" width="0.8" height="15.0" fill="rgb(137.88592499699,161.274384302816,137.88592499699)" rx="2" ry="2" />
+<text  x="1029.59" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_112 (72,243 us, 0.24%)</title><rect x="1094.1" y="327" width="2.8" height="15.0" fill="rgb(128.532891970008,162.79697107465,128.532891970008)" rx="2" ry="2" />
+<text  x="1097.06" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel80_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (39,388 us, 0.13%)</title><rect x="736.1" y="263" width="1.6" height="15.0" fill="rgb(153.853094406319,153.853094406319,137.903457507548)" rx="2" ry="2" />
+<text  x="739.12" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_12 (43,715 us, 0.15%)</title><rect x="693.5" y="247" width="1.7" height="15.0" fill="rgb(143.486176624747,154.237156902712,154.237156902712)" rx="2" ry="2" />
+<text  x="696.45" y="257.5" ></text>
+</g>
+<g >
+<title>all (29,576,235 us, 100%)</title><rect x="10.0" y="39" width="1180.0" height="15.0" fill="rgb(142.204057845972,117.522898230303,142.204057845972)" rx="2" ry="2" />
+<text  x="13.00" y="49.5" ></text>
+</g>
+<g >
+<title>firedrake.variational_solver.NonlinearVariationalSolver.__init__ (3,633 us, 0.01%)</title><rect x="100.4" y="71" width="0.2" height="15.0" fill="rgb(141.312094806305,115.237242941156,141.312094806305)" rx="2" ry="2" />
+<text  x="103.45" y="81.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_137 (38,571 us, 0.13%)</title><rect x="821.7" y="359" width="1.5" height="15.0" fill="rgb(142.772882279512,160.478833117289,142.772882279512)" rx="2" ry="2" />
+<text  x="824.66" y="369.5" ></text>
+</g>
+<g >
+<title>firedrake.parloops.par_loop (907,460 us, 3.07%)</title><rect x="139.2" y="183" width="36.2" height="15.0" fill="rgb(144.660394680077,144.660394680077,155.418140905821)" rx="2" ry="2" />
+<text  x="142.24" y="193.5" >fi..</text>
+</g>
+<g >
+<title>Log_Event_subkernel77_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (3,456 us, 0.01%)</title><rect x="1173.9" y="279" width="0.1" height="15.0" fill="rgb(151.782178629286,151.782178629286,127.867481049615)" rx="2" ry="2" />
+<text  x="1176.90" y="289.5" ></text>
+</g>
+<g >
+<title>firedrake.assemble.allocate_matrix (7,032 us, 0.02%)</title><rect x="1181.5" y="183" width="0.2" height="15.0" fill="rgb(154.87914081298,154.87914081298,142.875836247518)" rx="2" ry="2" />
+<text  x="1184.46" y="193.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel111_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (37,927 us, 0.13%)</title><rect x="729.3" y="263" width="1.6" height="15.0" fill="rgb(133.314460015724,162.01857627651,133.314460015724)" rx="2" ry="2" />
+<text  x="732.34" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel148_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (38,200 us, 0.13%)</title><rect x="1047.8" y="311" width="1.5" height="15.0" fill="rgb(113.812284836403,113.812284836403,149.447539000594)" rx="2" ry="2" />
+<text  x="1050.81" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel121_cell_to__cell_integral_otherwise (27,498 us, 0.09%)</title><rect x="1100.6" y="359" width="1.1" height="15.0" fill="rgb(119.495799096962,148.017429395509,148.017429395509)" rx="2" ry="2" />
+<text  x="1103.62" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel141_cell_to__cell_integral_otherwise (17,921 us, 0.06%)</title><rect x="1046.6" y="311" width="0.7" height="15.0" fill="rgb(155.842987990671,155.842987990671,147.546787954789)" rx="2" ry="2" />
+<text  x="1049.58" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel98_cell_to__cell_integral_otherwise (6,652 us, 0.02%)</title><rect x="1133.4" y="375" width="0.3" height="15.0" fill="rgb(151.312609453802,151.312609453802,125.591876583808)" rx="2" ry="2" />
+<text  x="1136.44" y="385.5" ></text>
+</g>
+<g >
+<title>pyop2.global_kernel.GlobalKernel.compile (3,201 us, 0.01%)</title><rect x="1157.2" y="311" width="0.1" height="15.0" fill="rgb(124.003729633054,124.003729633054,151.420076703172)" rx="2" ry="2" />
+<text  x="1160.18" y="321.5" ></text>
+</g>
+<g >
+<title>MatMultAdd (6,869 us, 0.02%)</title><rect x="968.4" y="263" width="0.2" height="15.0" fill="rgb(111.414727547457,145.922336771563,145.922336771563)" rx="2" ry="2" />
+<text  x="971.36" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel180_cell_to__cell_integral_otherwise (12,538 us, 0.04%)</title><rect x="561.5" y="263" width="0.5" height="15.0" fill="rgb(128.999339108269,162.721037819584,128.999339108269)" rx="2" ry="2" />
+<text  x="564.45" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_119 (2,176,686 us, 7.36%)</title><rect x="763.4" y="311" width="86.8" height="15.0" fill="rgb(150.618236158163,159.20168248588,150.618236158163)" rx="2" ry="2" />
+<text  x="766.36" y="321.5" >Log_Event..</text>
+</g>
+<g >
+<title>Log_Event_slate_loopy_knl_0 (31,352 us, 0.11%)</title><rect x="175.4" y="199" width="1.3" height="15.0" fill="rgb(130.629514610267,130.629514610267,152.702486698761)" rx="2" ry="2" />
+<text  x="178.45" y="209.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel149_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (30,713 us, 0.10%)</title><rect x="912.1" y="311" width="1.2" height="15.0" fill="rgb(135.943279154544,152.281590891919,152.281590891919)" rx="2" ry="2" />
+<text  x="915.11" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel138_cell_to__cell_integral_otherwise (66,519 us, 0.22%)</title><rect x="718.7" y="295" width="2.7" height="15.0" fill="rgb(153.372174113901,153.372174113901,135.572843782753)" rx="2" ry="2" />
+<text  x="721.74" y="305.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel152_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (7,316 us, 0.02%)</title><rect x="562.5" y="231" width="0.3" height="15.0" fill="rgb(148.138711494792,148.138711494792,110.210678782453)" rx="2" ry="2" />
+<text  x="565.54" y="241.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel101_cell_to__cell_integral_otherwise (19,983 us, 0.07%)</title><rect x="1134.1" y="359" width="0.8" height="15.0" fill="rgb(114.519751670542,114.519751670542,149.584468065266)" rx="2" ry="2" />
+<text  x="1137.13" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_117 (10,330 us, 0.03%)</title><rect x="762.9" y="327" width="0.5" height="15.0" fill="rgb(132.081301071624,132.081301071624,152.983477626766)" rx="2" ry="2" />
+<text  x="765.95" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel131_cell_to__cell_integral_otherwise (78,405 us, 0.27%)</title><rect x="1031.2" y="343" width="3.2" height="15.0" fill="rgb(128.669034980255,150.395675735622,150.395675735622)" rx="2" ry="2" />
+<text  x="1034.24" y="353.5" ></text>
+</g>
+<g >
+<title>KSPSolve (12,101,670 us, 40.92%)</title><rect x="698.1" y="167" width="482.8" height="15.0" fill="rgb(153.790704637339,125.728735552936,125.728735552936)" rx="2" ry="2" />
+<text  x="701.06" y="177.5" >KSPSolve</text>
+</g>
+<g >
+<title>Log_Event_subkernel148_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (189,250 us, 0.64%)</title><rect x="904.6" y="311" width="7.5" height="15.0" fill="rgb(153.947552658008,126.931237044731,126.931237044731)" rx="2" ry="2" />
+<text  x="907.56" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_39 (9,659 us, 0.03%)</title><rect x="696.1" y="247" width="0.4" height="15.0" fill="rgb(135.420309184208,161.675763621175,135.420309184208)" rx="2" ry="2" />
+<text  x="699.15" y="257.5" ></text>
+</g>
+<g >
+<title>firedrake.interpolation.make_interpolator (48,088 us, 0.16%)</title><rect x="1181.7" y="183" width="2.0" height="15.0" fill="rgb(152.995287405688,119.630536776943,119.630536776943)" rx="2" ry="2" />
+<text  x="1184.74" y="193.5" ></text>
+</g>
+<g >
+<title>firedrake.mg.interface.prolong (6,869 us, 0.02%)</title><rect x="968.4" y="295" width="0.2" height="15.0" fill="rgb(155.671048030356,140.144701566066,140.144701566066)" rx="2" ry="2" />
+<text  x="971.36" y="305.5" ></text>
+</g>
+<g >
+<title>firedrake.parloops.par_loop (7,090 us, 0.02%)</title><rect x="661.5" y="183" width="0.2" height="15.0" fill="rgb(153.909420364169,126.63888945863,126.63888945863)" rx="2" ry="2" />
+<text  x="664.46" y="193.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_130 (574,081 us, 1.94%)</title><rect x="1102.5" y="343" width="22.9" height="15.0" fill="rgb(150.618434862915,150.618434862915,122.227799720279)" rx="2" ry="2" />
+<text  x="1105.51" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel71_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (25,323 us, 0.09%)</title><rect x="1172.0" y="279" width="1.0" height="15.0" fill="rgb(154.881524435663,134.091687340084,134.091687340084)" rx="2" ry="2" />
+<text  x="1175.04" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel116_cell_to__cell_integral_otherwise (19,379 us, 0.07%)</title><rect x="1018.2" y="327" width="0.8" height="15.0" fill="rgb(134.668526720962,134.668526720962,153.484230978251)" rx="2" ry="2" />
+<text  x="1021.25" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel126_cell_to__cell_integral_otherwise (31,617 us, 0.11%)</title><rect x="1099.2" y="375" width="1.3" height="15.0" fill="rgb(123.61614924642,163.597371052908,123.61614924642)" rx="2" ry="2" />
+<text  x="1102.23" y="385.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel101_cell_to__cell_integral_otherwise (61,071 us, 0.21%)</title><rect x="876.8" y="343" width="2.4" height="15.0" fill="rgb(142.291353820485,153.927388027533,153.927388027533)" rx="2" ry="2" />
+<text  x="879.81" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel30_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (6,138 us, 0.02%)</title><rect x="697.1" y="231" width="0.2" height="15.0" fill="rgb(151.269106877135,151.269106877135,125.381056404579)" rx="2" ry="2" />
+<text  x="700.06" y="241.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel88_cell_to__cell_integral_otherwise (4,085 us, 0.01%)</title><rect x="1039.4" y="359" width="0.2" height="15.0" fill="rgb(154.383128912187,154.383128912187,140.472086266754)" rx="2" ry="2" />
+<text  x="1042.45" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel86_cell_to__cell_integral_otherwise (35,023 us, 0.12%)</title><rect x="861.8" y="359" width="1.4" height="15.0" fill="rgb(136.744404175748,161.460213273715,136.744404175748)" rx="2" ry="2" />
+<text  x="864.76" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_82 (119,629 us, 0.40%)</title><rect x="1038.6" y="311" width="4.7" height="15.0" fill="rgb(143.275902553519,154.182641402764,154.182641402764)" rx="2" ry="2" />
+<text  x="1041.56" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel106_cell_to__cell_integral_otherwise (6,919 us, 0.02%)</title><rect x="700.6" y="279" width="0.2" height="15.0" fill="rgb(154.514038115277,154.514038115277,141.106492404806)" rx="2" ry="2" />
+<text  x="703.56" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_130 (1,746,310 us, 5.90%)</title><rect x="780.5" y="327" width="69.7" height="15.0" fill="rgb(129.953846969181,150.728775140158,150.728775140158)" rx="2" ry="2" />
+<text  x="783.53" y="337.5" >Log_Eve..</text>
+</g>
+<g >
+<title>Log_Event_subkernel148_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (6,394 us, 0.02%)</title><rect x="1047.6" y="311" width="0.2" height="15.0" fill="rgb(153.800860407354,125.806596456377,125.806596456377)" rx="2" ry="2" />
+<text  x="1050.55" y="321.5" ></text>
+</g>
+<g >
+<title>firedrake.tsfc_interface.compile_form (18,953 us, 0.06%)</title><rect x="1180.1" y="231" width="0.8" height="15.0" fill="rgb(152.444248184448,115.405902747434,115.405902747434)" rx="2" ry="2" />
+<text  x="1183.12" y="241.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel138_cell_to__cell_integral_otherwise (296,227 us, 1.00%)</title><rect x="838.4" y="343" width="11.8" height="15.0" fill="rgb(148.064066759951,148.064066759951,109.848938913608)" rx="2" ry="2" />
+<text  x="841.38" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_112 (44,861 us, 0.15%)</title><rect x="1017.2" y="311" width="1.8" height="15.0" fill="rgb(114.333034028277,114.333034028277,149.548329166763)" rx="2" ry="2" />
+<text  x="1020.23" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_93 (91,650 us, 0.31%)</title><rect x="1132.3" y="343" width="3.7" height="15.0" fill="rgb(135.016676464367,152.041360564836,152.041360564836)" rx="2" ry="2" />
+<text  x="1135.32" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel71_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (4,028 us, 0.01%)</title><rect x="1171.7" y="279" width="0.2" height="15.0" fill="rgb(154.371107133038,130.17848801996,130.17848801996)" rx="2" ry="2" />
+<text  x="1174.70" y="289.5" ></text>
+</g>
+<g >
+<title>firedrake.variational_solver.NonlinearVariationalProblem.__init__ (3,225 us, 0.01%)</title><rect x="1000.4" y="295" width="0.1" height="15.0" fill="rgb(142.375098337237,117.961189489169,142.375098337237)" rx="2" ry="2" />
+<text  x="1003.39" y="305.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_120 (81,319 us, 0.27%)</title><rect x="703.4" y="279" width="3.3" height="15.0" fill="rgb(154.862459148127,133.945520135644,133.945520135644)" rx="2" ry="2" />
+<text  x="706.41" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel67_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (6,134 us, 0.02%)</title><rect x="697.3" y="231" width="0.2" height="15.0" fill="rgb(153.2182092656,121.339604369602,121.339604369602)" rx="2" ry="2" />
+<text  x="700.30" y="241.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel152_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (4,838 us, 0.02%)</title><rect x="562.3" y="231" width="0.2" height="15.0" fill="rgb(152.499676737571,115.830854988047,115.830854988047)" rx="2" ry="2" />
+<text  x="565.35" y="241.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel115_cell_to__cell_integral_otherwise (19,943 us, 0.07%)</title><rect x="758.1" y="327" width="0.8" height="15.0" fill="rgb(121.948465828739,121.948465828739,151.022283708788)" rx="2" ry="2" />
+<text  x="761.12" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel88_cell_to__cell_integral_otherwise (4,120 us, 0.01%)</title><rect x="724.1" y="311" width="0.2" height="15.0" fill="rgb(130.317606878672,130.317606878672,152.642117460388)" rx="2" ry="2" />
+<text  x="727.10" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel141_cell_to__cell_integral_otherwise (29,189 us, 0.10%)</title><rect x="1141.2" y="327" width="1.2" height="15.0" fill="rgb(156.645263378449,147.61368590144,147.61368590144)" rx="2" ry="2" />
+<text  x="1144.25" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_132 (974,470 us, 3.29%)</title><rect x="784.3" y="343" width="38.9" height="15.0" fill="rgb(153.628557841011,153.628557841011,136.815318767977)" rx="2" ry="2" />
+<text  x="787.33" y="353.5" >Log..</text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_slate_loopy_knl_79 (1,689,251 us, 5.71%)</title><rect x="1089.9" y="295" width="67.4" height="15.0" fill="rgb(149.205068451484,149.205068451484,115.378408649498)" rx="2" ry="2" />
+<text  x="1092.91" y="305.5" >Parloo..</text>
+</g>
+<g >
+<title>Log_Event_subkernel101_cell_to__cell_integral_otherwise (13,596 us, 0.05%)</title><rect x="726.9" y="295" width="0.5" height="15.0" fill="rgb(154.205576289772,128.909418221584,128.909418221584)" rx="2" ry="2" />
+<text  x="729.91" y="305.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel136_cell_to__cell_integral_otherwise (84,982 us, 0.29%)</title><rect x="711.6" y="311" width="3.4" height="15.0" fill="rgb(125.592163979157,149.597968439041,149.597968439041)" rx="2" ry="2" />
+<text  x="714.58" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_2 (12,830 us, 0.04%)</title><rect x="695.2" y="247" width="0.5" height="15.0" fill="rgb(134.885883467783,134.885883467783,153.526300026023)" rx="2" ry="2" />
+<text  x="698.20" y="257.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel80_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (198,340 us, 0.67%)</title><rect x="929.9" y="311" width="7.9" height="15.0" fill="rgb(155.489639148395,138.753900137696,138.753900137696)" rx="2" ry="2" />
+<text  x="932.88" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_14 (24,456 us, 0.08%)</title><rect x="693.5" y="263" width="0.9" height="15.0" fill="rgb(116.078896659661,147.131565800653,147.131565800653)" rx="2" ry="2" />
+<text  x="696.45" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_117 (3,244 us, 0.01%)</title><rect x="1096.8" y="343" width="0.1" height="15.0" fill="rgb(148.973650890619,148.973650890619,114.256923546844)" rx="2" ry="2" />
+<text  x="1099.82" y="353.5" ></text>
+</g>
+<g >
+<title>MatMult (1,047,579 us, 3.54%)</title><rect x="1014.6" y="231" width="41.8" height="15.0" fill="rgb(150.508769043055,150.508769043055,121.696342285574)" rx="2" ry="2" />
+<text  x="1017.60" y="241.5" >Mat..</text>
+</g>
+<g >
+<title>ParLoopExecute (24,610 us, 0.08%)</title><rect x="1187.5" y="135" width="1.0" height="15.0" fill="rgb(143.335587357188,120.422442602795,143.335587357188)" rx="2" ry="2" />
+<text  x="1190.48" y="145.5" ></text>
+</g>
+<g >
+<title>PCApply (11,019,989 us, 37.26%)</title><rect x="741.2" y="183" width="439.7" height="15.0" fill="rgb(155.297134582704,137.278031800734,137.278031800734)" rx="2" ry="2" />
+<text  x="744.22" y="193.5" >PCApply</text>
+</g>
+<g >
+<title>Log_Event_subkernel80_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (195,390 us, 0.66%)</title><rect x="922.1" y="311" width="7.8" height="15.0" fill="rgb(155.005894690047,135.045192623697,135.045192623697)" rx="2" ry="2" />
+<text  x="925.09" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_85 (24,553 us, 0.08%)</title><rect x="723.5" y="295" width="1.0" height="15.0" fill="rgb(151.360324552473,151.360324552473,125.823111292754)" rx="2" ry="2" />
+<text  x="726.54" y="305.5" ></text>
+</g>
+<g >
+<title>RecoverFirstElim (588,313 us, 1.99%)</title><rect x="539.7" y="167" width="23.4" height="15.0" fill="rgb(154.636651291414,132.214326567504,132.214326567504)" rx="2" ry="2" />
+<text  x="542.67" y="177.5" >R..</text>
+</g>
+<g >
+<title>Log_Event_subkernel145_cell_to__cell_integral_otherwise (6,550 us, 0.02%)</title><rect x="1126.6" y="343" width="0.3" height="15.0" fill="rgb(154.990779849306,134.929312178015,134.929312178015)" rx="2" ry="2" />
+<text  x="1129.63" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel133_cell_to__cell_integral_otherwise (53,357 us, 0.18%)</title><rect x="1106.7" y="375" width="2.2" height="15.0" fill="rgb(128.973163525424,162.725298960977,128.973163525424)" rx="2" ry="2" />
+<text  x="1109.75" y="385.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_127 (9,836 us, 0.03%)</title><rect x="774.4" y="359" width="0.3" height="15.0" fill="rgb(135.915475973362,161.595155074104,135.915475973362)" rx="2" ry="2" />
+<text  x="777.35" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel108_cell_to__cell_integral_otherwise (4,097 us, 0.01%)</title><rect x="700.8" y="279" width="0.2" height="15.0" fill="rgb(135.45459562373,100.227401285808,135.45459562373)" rx="2" ry="2" />
+<text  x="703.84" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_82 (192,794 us, 0.65%)</title><rect x="1128.3" y="327" width="7.7" height="15.0" fill="rgb(148.313550875554,133.178474118608,148.313550875554)" rx="2" ry="2" />
+<text  x="1131.28" y="337.5" ></text>
+</g>
+<g >
+<title>firedrake.variational_solver.NonlinearVariationalProblem.__init__ (8,943 us, 0.03%)</title><rect x="100.1" y="87" width="0.3" height="15.0" fill="rgb(115.287773709438,115.287773709438,149.733117492149)" rx="2" ry="2" />
+<text  x="103.09" y="97.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_119 (459,551 us, 1.55%)</title><rect x="703.1" y="263" width="18.3" height="15.0" fill="rgb(105.008586562231,144.261485405023,144.261485405023)" rx="2" ry="2" />
+<text  x="706.06" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel104_cell_to__cell_integral_otherwise (18,102 us, 0.06%)</title><rect x="1043.3" y="311" width="0.8" height="15.0" fill="rgb(153.988404492259,153.988404492259,138.559191000947)" rx="2" ry="2" />
+<text  x="1046.33" y="321.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspacedata.FunctionSpaceData.__init__ (5,913 us, 0.02%)</title><rect x="1185.1" y="199" width="0.3" height="15.0" fill="rgb(123.939718935248,163.544696917518,123.939718935248)" rx="2" ry="2" />
+<text  x="1188.14" y="209.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel118_cell_to__cell_integral_otherwise (20,914 us, 0.07%)</title><rect x="1140.4" y="327" width="0.8" height="15.0" fill="rgb(121.805167698375,148.616154588468,148.616154588468)" rx="2" ry="2" />
+<text  x="1143.41" y="337.5" ></text>
+</g>
+<g >
+<title>firedrake.slate.slac.optimise.optimise (4,494 us, 0.02%)</title><rect x="563.1" y="167" width="0.2" height="15.0" fill="rgb(149.588929997806,149.588929997806,117.238660758598)" rx="2" ry="2" />
+<text  x="566.15" y="177.5" ></text>
+</g>
+<g >
+<title>firedrake.function.Function.assign (3,984 us, 0.01%)</title><rect x="947.2" y="279" width="0.2" height="15.0" fill="rgb(153.382982276719,153.382982276719,135.625221802561)" rx="2" ry="2" />
+<text  x="950.20" y="289.5" ></text>
+</g>
+<g >
+<title>HybridProject (907,460 us, 3.07%)</title><rect x="139.2" y="167" width="36.2" height="15.0" fill="rgb(156.02613833458,142.86706056511,142.86706056511)" rx="2" ry="2" />
+<text  x="142.24" y="177.5" >Hy..</text>
+</g>
+<g >
+<title>CreateSparsity (106,267 us, 0.36%)</title><rect x="1174.6" y="263" width="4.3" height="15.0" fill="rgb(119.35416160129,147.980708563297,147.980708563297)" rx="2" ry="2" />
+<text  x="1177.63" y="273.5" ></text>
+</g>
+<g >
+<title>firedrake.interpolation.make_interpolator (227,443 us, 0.77%)</title><rect x="979.0" y="343" width="9.1" height="15.0" fill="rgb(140.869470483596,160.788690851508,140.869470483596)" rx="2" ry="2" />
+<text  x="982.00" y="353.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspacedata.FunctionSpaceData.__init__ (5,403 us, 0.02%)</title><rect x="99.5" y="135" width="0.2" height="15.0" fill="rgb(135.39778448994,161.67943043187,135.39778448994)" rx="2" ry="2" />
+<text  x="102.46" y="145.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_4 (7,092 us, 0.02%)</title><rect x="695.4" y="263" width="0.3" height="15.0" fill="rgb(147.741351137845,147.741351137845,108.285009360327)" rx="2" ry="2" />
+<text  x="698.43" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel143_cell_to__cell_integral_otherwise (11,223 us, 0.04%)</title><rect x="1126.2" y="343" width="0.4" height="15.0" fill="rgb(148.760816692229,134.324592773836,148.760816692229)" rx="2" ry="2" />
+<text  x="1129.19" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_95 (118,581 us, 0.40%)</title><rect x="872.1" y="343" width="4.7" height="15.0" fill="rgb(154.467179438871,130.915042364677,130.915042364677)" rx="2" ry="2" />
+<text  x="875.08" y="353.5" ></text>
+</g>
+<g >
+<title>PCApply (547,084 us, 1.85%)</title><rect x="947.4" y="247" width="21.8" height="15.0" fill="rgb(126.998270193719,126.998270193719,151.999665198784)" rx="2" ry="2" />
+<text  x="950.36" y="257.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel113_cell_to__cell_integral_otherwise (6,919 us, 0.02%)</title><rect x="701.9" y="279" width="0.2" height="15.0" fill="rgb(143.105209160975,160.424733392399,143.105209160975)" rx="2" ry="2" />
+<text  x="704.86" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel123_cell_to__cell_integral_otherwise (7,070 us, 0.02%)</title><rect x="1020.1" y="359" width="0.3" height="15.0" fill="rgb(111.325382789687,111.325382789687,148.966203120585)" rx="2" ry="2" />
+<text  x="1023.11" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel111_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (10,307 us, 0.03%)</title><rect x="1137.5" y="327" width="0.5" height="15.0" fill="rgb(149.999988438862,137.499970374584,149.999988438862)" rx="2" ry="2" />
+<text  x="1140.55" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_93 (56,862 us, 0.19%)</title><rect x="1041.1" y="327" width="2.2" height="15.0" fill="rgb(125.075750445538,125.075750445538,151.627564602362)" rx="2" ry="2" />
+<text  x="1044.06" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_134 (8,251 us, 0.03%)</title><rect x="1115.6" y="375" width="0.3" height="15.0" fill="rgb(125.904356044666,163.224872271798,125.904356044666)" rx="2" ry="2" />
+<text  x="1118.58" y="385.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_slate_loopy_knl_0 (130,967 us, 0.44%)</title><rect x="692.6" y="199" width="5.2" height="15.0" fill="rgb(149.371898909683,159.404574596098,149.371898909683)" rx="2" ry="2" />
+<text  x="695.57" y="209.5" ></text>
+</g>
+<g >
+<title>firedrake.formmanipulation.split_form (4,714 us, 0.02%)</title><rect x="1185.4" y="151" width="0.2" height="15.0" fill="rgb(112.452106688199,146.191286919163,146.191286919163)" rx="2" ry="2" />
+<text  x="1188.38" y="161.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel149_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (37,629 us, 0.13%)</title><rect x="1049.9" y="311" width="1.5" height="15.0" fill="rgb(115.433206555916,146.964164662645,146.964164662645)" rx="2" ry="2" />
+<text  x="1052.85" y="321.5" ></text>
+</g>
+<g >
+<title>firedrake.formmanipulation.ExtractSubBlock.argument (4,714 us, 0.02%)</title><rect x="1185.4" y="183" width="0.2" height="15.0" fill="rgb(117.782966043189,147.573361566753,147.573361566753)" rx="2" ry="2" />
+<text  x="1188.38" y="193.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel128_cell_to__cell_integral_otherwise (13,658 us, 0.05%)</title><rect x="706.1" y="295" width="0.6" height="15.0" fill="rgb(152.709607620144,144.44336952662,152.709607620144)" rx="2" ry="2" />
+<text  x="709.11" y="305.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_slate_loopy_knl_79 (5,148,068 us, 17.41%)</title><rect x="741.8" y="279" width="205.4" height="15.0" fill="rgb(123.364942057836,123.364942057836,151.296440398291)" rx="2" ry="2" />
+<text  x="744.80" y="289.5" >Parloop_Cells_wrap_slate..</text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_97 (4,706 us, 0.02%)</title><rect x="876.6" y="359" width="0.2" height="15.0" fill="rgb(135.061148203147,152.05289027489,152.05289027489)" rx="2" ry="2" />
+<text  x="879.62" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_120 (389,986 us, 1.32%)</title><rect x="765.0" y="327" width="15.5" height="15.0" fill="rgb(133.983174089712,96.4568836048862,133.983174089712)" rx="2" ry="2" />
+<text  x="767.97" y="337.5" ></text>
+</g>
+<g >
+<title>MatMult (499,398 us, 1.69%)</title><rect x="948.4" y="263" width="20.0" height="15.0" fill="rgb(154.054646781261,127.752291989669,127.752291989669)" rx="2" ry="2" />
+<text  x="951.43" y="273.5" ></text>
+</g>
+<g >
+<title>firedrake.interpolation.interpolate (27,514 us, 0.09%)</title><rect x="1001.2" y="295" width="1.1" height="15.0" fill="rgb(155.167691938232,136.285638193112,136.285638193112)" rx="2" ry="2" />
+<text  x="1004.22" y="305.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspaceimpl.FunctionSpace.__init__ (5,403 us, 0.02%)</title><rect x="99.5" y="103" width="0.2" height="15.0" fill="rgb(132.1136581796,151.288726194711,151.288726194711)" rx="2" ry="2" />
+<text  x="102.46" y="113.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_153 (7,111 us, 0.02%)</title><rect x="559.1" y="231" width="0.3" height="15.0" fill="rgb(140.692674409723,160.81747160772,140.692674409723)" rx="2" ry="2" />
+<text  x="562.11" y="241.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_93 (58,741 us, 0.20%)</title><rect x="725.8" y="279" width="2.3" height="15.0" fill="rgb(142.752054833832,160.482223631702,142.752054833832)" rx="2" ry="2" />
+<text  x="728.77" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_144 (5,326 us, 0.02%)</title><rect x="858.5" y="327" width="0.2" height="15.0" fill="rgb(149.787014025378,149.787014025378,118.198606430679)" rx="2" ry="2" />
+<text  x="861.49" y="337.5" ></text>
+</g>
+<g >
+<title>firedrake.__init__ (1,715,187 us, 5.80%)</title><rect x="31.0" y="71" width="68.5" height="15.0" fill="rgb(146.747382802677,159.831821404215,146.747382802677)" rx="2" ry="2" />
+<text  x="34.03" y="81.5" >firedr..</text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_137 (8,072 us, 0.03%)</title><rect x="715.2" y="311" width="0.3" height="15.0" fill="rgb(148.071021121493,148.071021121493,109.882640819542)" rx="2" ry="2" />
+<text  x="718.18" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_122 (45,042 us, 0.15%)</title><rect x="1019.5" y="343" width="1.8" height="15.0" fill="rgb(133.977996486605,133.977996486605,153.350579965149)" rx="2" ry="2" />
+<text  x="1022.53" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel76_cell_to__cell_integral_otherwise (5,813 us, 0.02%)</title><rect x="1173.5" y="279" width="0.3" height="15.0" fill="rgb(106.782969973696,144.721510733921,144.721510733921)" rx="2" ry="2" />
+<text  x="1176.53" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_slate_loopy_knl_151 (107,026 us, 0.36%)</title><rect x="558.9" y="215" width="4.2" height="15.0" fill="rgb(147.782099927048,147.782099927048,108.482484261849)" rx="2" ry="2" />
+<text  x="561.88" y="225.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_1 (56,545 us, 0.19%)</title><rect x="693.5" y="231" width="2.2" height="15.0" fill="rgb(144.699628852757,154.551755628493,154.551755628493)" rx="2" ry="2" />
+<text  x="696.45" y="241.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel126_cell_to__cell_integral_otherwise (19,352 us, 0.07%)</title><rect x="1020.6" y="359" width="0.7" height="15.0" fill="rgb(154.394449090493,130.357443027117,130.357443027117)" rx="2" ry="2" />
+<text  x="1023.55" y="369.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (130,967 us, 0.44%)</title><rect x="692.6" y="183" width="5.2" height="15.0" fill="rgb(140.662330695187,153.505048698752,153.505048698752)" rx="2" ry="2" />
+<text  x="695.57" y="193.5" ></text>
+</g>
+<g >
+<title>MatMult (1,081,681 us, 3.66%)</title><rect x="698.1" y="183" width="43.1" height="15.0" fill="rgb(138.245229059188,161.215892943853,138.245229059188)" rx="2" ry="2" />
+<text  x="701.06" y="193.5" >Mat..</text>
+</g>
+<g >
+<title>Log_Event_subkernel111_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (6,452 us, 0.02%)</title><rect x="1044.1" y="311" width="0.2" height="15.0" fill="rgb(117.992604792089,117.992604792089,150.256633185566)" rx="2" ry="2" />
+<text  x="1047.05" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel149_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (31,649 us, 0.11%)</title><rect x="913.3" y="311" width="1.3" height="15.0" fill="rgb(119.679024606946,148.064932305505,148.064932305505)" rx="2" ry="2" />
+<text  x="916.34" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel104_cell_to__cell_integral_otherwise (28,946 us, 0.10%)</title><rect x="1136.0" y="327" width="1.1" height="15.0" fill="rgb(118.300433783143,118.300433783143,150.316212990286)" rx="2" ry="2" />
+<text  x="1138.98" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel106_cell_to__cell_integral_otherwise (34,121 us, 0.12%)</title><rect x="750.9" y="327" width="1.4" height="15.0" fill="rgb(155.6820609883,140.229134243635,140.229134243635)" rx="2" ry="2" />
+<text  x="753.94" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel136_cell_to__cell_integral_otherwise (83,904 us, 0.28%)</title><rect x="1027.4" y="359" width="3.3" height="15.0" fill="rgb(146.177249235277,154.934842394331,154.934842394331)" rx="2" ry="2" />
+<text  x="1030.37" y="369.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_slate_loopy_knl_0 (9,129,207 us, 30.87%)</title><rect x="175.4" y="183" width="364.3" height="15.0" fill="rgb(152.501709645323,115.846440614144,115.846440614144)" rx="2" ry="2" />
+<text  x="178.45" y="193.5" >Parloop_Cells_wrap_slate_loopy_knl_0</text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_24 (7,078 us, 0.02%)</title><rect x="695.7" y="231" width="0.3" height="15.0" fill="rgb(152.321433565501,114.464324002173,114.464324002173)" rx="2" ry="2" />
+<text  x="698.71" y="241.5" ></text>
+</g>
+<g >
+<title>KSPSolve (27,166,268 us, 91.85%)</title><rect x="100.6" y="119" width="1083.8" height="15.0" fill="rgb(155.110899551979,135.850229898508,135.850229898508)" rx="2" ry="2" />
+<text  x="103.59" y="129.5" >KSPSolve</text>
+</g>
+<g >
+<title>pyop2.global_kernel.GlobalKernel.compile (900,348 us, 3.04%)</title><rect x="139.5" y="231" width="35.9" height="15.0" fill="rgb(128.812216500778,150.432796870572,150.432796870572)" rx="2" ry="2" />
+<text  x="142.53" y="241.5" >py..</text>
+</g>
+<g >
+<title>firedrake.functionspacedata.get_shared_data (5,403 us, 0.02%)</title><rect x="99.5" y="119" width="0.2" height="15.0" fill="rgb(145.192610151173,145.192610151173,155.52115035184)" rx="2" ry="2" />
+<text  x="102.46" y="129.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel108_cell_to__cell_integral_otherwise (3,941 us, 0.01%)</title><rect x="1016.8" y="327" width="0.2" height="15.0" fill="rgb(136.42270646111,161.512582669122,136.42270646111)" rx="2" ry="2" />
+<text  x="1019.81" y="337.5" ></text>
+</g>
+<g >
+<title>MatMultTranspose (353,109 us, 1.19%)</title><rect x="1000.5" y="263" width="14.1" height="15.0" fill="rgb(144.886732754717,154.600264047519,154.600264047519)" rx="2" ry="2" />
+<text  x="1003.51" y="273.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_slate_loopy_knl_151 (111,426 us, 0.38%)</title><rect x="558.7" y="199" width="4.4" height="15.0" fill="rgb(148.419120462029,159.559678064321,148.419120462029)" rx="2" ry="2" />
+<text  x="561.70" y="209.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel86_cell_to__cell_integral_otherwise (7,076 us, 0.02%)</title><rect x="1039.2" y="359" width="0.2" height="15.0" fill="rgb(132.461082592896,132.461082592896,153.056983727657)" rx="2" ry="2" />
+<text  x="1042.17" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel135_cell_to__cell_integral_otherwise (95,810 us, 0.32%)</title><rect x="800.4" y="359" width="3.8" height="15.0" fill="rgb(149.237168141349,149.237168141349,115.533968684997)" rx="2" ry="2" />
+<text  x="803.37" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_112 (219,902 us, 0.74%)</title><rect x="754.6" y="311" width="8.8" height="15.0" fill="rgb(118.141285694495,147.666259254128,147.666259254128)" rx="2" ry="2" />
+<text  x="757.59" y="321.5" ></text>
+</g>
+<g >
+<title>SCForwardElim (910,638 us, 3.08%)</title><rect x="661.5" y="151" width="36.3" height="15.0" fill="rgb(135.737119236725,100.951368044108,135.737119236725)" rx="2" ry="2" />
+<text  x="664.46" y="161.5" >SC..</text>
+</g>
+<g >
+<title>Log_Event_subkernel116_cell_to__cell_integral_otherwise (19,241 us, 0.07%)</title><rect x="702.3" y="279" width="0.8" height="15.0" fill="rgb(138.613754309081,161.155900461312,138.613754309081)" rx="2" ry="2" />
+<text  x="705.29" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel184_cell_to__cell_integral_otherwise (3,212 us, 0.01%)</title><rect x="560.8" y="279" width="0.1" height="15.0" fill="rgb(132.857645732152,132.857645732152,153.133737883642)" rx="2" ry="2" />
+<text  x="563.79" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_127 (3,293 us, 0.01%)</title><rect x="1100.5" y="375" width="0.1" height="15.0" fill="rgb(127.996359367418,150.221278354516,150.221278354516)" rx="2" ry="2" />
+<text  x="1103.49" y="385.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_85 (120,722 us, 0.41%)</title><rect x="860.7" y="343" width="4.8" height="15.0" fill="rgb(109.933451243838,109.933451243838,148.696797014936)" rx="2" ry="2" />
+<text  x="863.67" y="353.5" ></text>
+</g>
+<g >
+<title>KSPSetUp (3,092,612 us, 10.46%)</title><rect x="1056.4" y="215" width="123.4" height="15.0" fill="rgb(135.530364441035,152.174538929157,152.174538929157)" rx="2" ry="2" />
+<text  x="1059.40" y="225.5" >KSPSetUp</text>
+</g>
+<g >
+<title>DMCoarsen (774,913 us, 2.62%)</title><rect x="969.6" y="263" width="30.9" height="15.0" fill="rgb(156.791002817817,148.731021603262,148.731021603262)" rx="2" ry="2" />
+<text  x="972.60" y="273.5" >DM..</text>
+</g>
+<g >
+<title>Log_Event_subkernel149_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (187,598 us, 0.63%)</title><rect x="914.6" y="311" width="7.5" height="15.0" fill="rgb(155.254744464283,136.95304089284,136.95304089284)" rx="2" ry="2" />
+<text  x="917.60" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel123_cell_to__cell_integral_otherwise (35,246 us, 0.12%)</title><rect x="768.1" y="359" width="1.4" height="15.0" fill="rgb(105.539978357647,144.399253648279,144.399253648279)" rx="2" ry="2" />
+<text  x="771.08" y="369.5" ></text>
+</g>
+<g >
+<title>firedrake.matrix_free.operators.ImplicitMatrixContext.mult (2,524,766 us, 8.54%)</title><rect x="1056.6" y="263" width="100.7" height="15.0" fill="rgb(144.718342253073,144.718342253073,155.429356565111)" rx="2" ry="2" />
+<text  x="1059.58" y="273.5" >firedrake.m..</text>
+</g>
+<g >
+<title>Log_Event_subkernel175_cell_to__cell_integral_otherwise (3,181 us, 0.01%)</title><rect x="559.9" y="279" width="0.2" height="15.0" fill="rgb(156.309442178099,145.039056698762,145.039056698762)" rx="2" ry="2" />
+<text  x="562.92" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_120 (78,517 us, 0.27%)</title><rect x="1019.4" y="327" width="3.1" height="15.0" fill="rgb(133.92360906242,96.3042482224524,133.92360906242)" rx="2" ry="2" />
+<text  x="1022.36" y="337.5" ></text>
+</g>
+<g >
+<title>firedrake.interpolation.interpolate (227,443 us, 0.77%)</title><rect x="979.0" y="327" width="9.1" height="15.0" fill="rgb(145.740029817761,145.740029817761,155.627102545373)" rx="2" ry="2" />
+<text  x="982.00" y="337.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspaceimpl.FunctionSpace.__init__ (5,913 us, 0.02%)</title><rect x="1185.1" y="167" width="0.3" height="15.0" fill="rgb(153.279713810824,121.811139216317,121.811139216317)" rx="2" ry="2" />
+<text  x="1188.14" y="177.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspaceimpl.FunctionSpace.__init__ (13,427 us, 0.05%)</title><rect x="30.5" y="87" width="0.5" height="15.0" fill="rgb(125.636325102896,125.636325102896,151.736062923141)" rx="2" ry="2" />
+<text  x="33.50" y="97.5" ></text>
+</g>
+<g >
+<title>PCApply (7,899,924 us, 26.71%)</title><rect x="741.2" y="199" width="315.2" height="15.0" fill="rgb(151.724109581311,151.724109581311,127.58606950943)" rx="2" ry="2" />
+<text  x="744.22" y="209.5" >PCApply</text>
+</g>
+<g >
+<title>Log_Event_subkernel68_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (6,243 us, 0.02%)</title><rect x="697.5" y="231" width="0.3" height="15.0" fill="rgb(148.399929250219,148.399929250219,111.4765802126)" rx="2" ry="2" />
+<text  x="700.55" y="241.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_83 (285,792 us, 0.97%)</title><rect x="859.9" y="327" width="11.4" height="15.0" fill="rgb(152.1087363446,152.1087363446,129.450029977676)" rx="2" ry="2" />
+<text  x="862.88" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel138_cell_to__cell_integral_otherwise (97,671 us, 0.33%)</title><rect x="1121.5" y="359" width="3.9" height="15.0" fill="rgb(105.47095784551,144.381359441428,144.381359441428)" rx="2" ry="2" />
+<text  x="1124.52" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_122 (71,799 us, 0.24%)</title><rect x="1097.8" y="359" width="2.8" height="15.0" fill="rgb(149.070948230919,149.070948230919,114.728441426763)" rx="2" ry="2" />
+<text  x="1100.76" y="369.5" ></text>
+</g>
+<g >
+<title>pyop2.global_kernel.GlobalKernel.compile (37,775 us, 0.13%)</title><rect x="28.7" y="135" width="1.5" height="15.0" fill="rgb(130.587621943323,130.587621943323,152.694378440643)" rx="2" ry="2" />
+<text  x="31.72" y="145.5" ></text>
+</g>
+<g >
+<title>MatZeroInitial (4,717 us, 0.02%)</title><rect x="1183.5" y="199" width="0.2" height="15.0" fill="rgb(129.391464297426,162.657203486466,129.391464297426)" rx="2" ry="2" />
+<text  x="1186.47" y="209.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_142 (223,221 us, 0.75%)</title><rect x="850.2" y="311" width="8.9" height="15.0" fill="rgb(128.058342890999,128.058342890999,152.204840559548)" rx="2" ry="2" />
+<text  x="853.20" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel115_cell_to__cell_integral_otherwise (6,510 us, 0.02%)</title><rect x="1095.3" y="343" width="0.2" height="15.0" fill="rgb(116.737268740913,116.737268740913,150.013664917596)" rx="2" ry="2" />
+<text  x="1098.29" y="353.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (1,068,884 us, 3.61%)</title><rect x="698.6" y="215" width="42.6" height="15.0" fill="rgb(156.457386254528,146.173294618046,146.173294618046)" rx="2" ry="2" />
+<text  x="701.57" y="225.5" >Par..</text>
+</g>
+<g >
+<title>Log_Event_subkernel125_cell_to__cell_integral_otherwise (6,645 us, 0.02%)</title><rect x="1099.0" y="375" width="0.2" height="15.0" fill="rgb(128.167179171288,162.856505716302,128.167179171288)" rx="2" ry="2" />
+<text  x="1101.96" y="385.5" ></text>
+</g>
+<g >
+<title>firedrake (29,576,235 us, 100.00%)</title><rect x="10.0" y="55" width="1180.0" height="15.0" fill="rgb(139.971383465744,139.971383465744,154.510590348209)" rx="2" ry="2" />
+<text  x="13.00" y="65.5" >firedrake</text>
+</g>
+<g >
+<title>Log_Event_subkernel148_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (31,954 us, 0.11%)</title><rect x="902.0" y="311" width="1.3" height="15.0" fill="rgb(148.259737239097,133.040576675186,148.259737239097)" rx="2" ry="2" />
+<text  x="905.00" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel126_cell_to__cell_integral_otherwise (19,824 us, 0.07%)</title><rect x="704.6" y="311" width="0.8" height="15.0" fill="rgb(129.169193926546,162.693387035213,129.169193926546)" rx="2" ry="2" />
+<text  x="707.61" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel98_cell_to__cell_integral_otherwise (4,194 us, 0.01%)</title><rect x="1041.8" y="359" width="0.1" height="15.0" fill="rgb(104.197755992633,144.051270072164,144.051270072164)" rx="2" ry="2" />
+<text  x="1044.77" y="369.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspacedata.FunctionSpaceData.__init__ (6,797 us, 0.02%)</title><rect x="30.2" y="151" width="0.3" height="15.0" fill="rgb(152.386412260893,152.386412260893,130.795690187405)" rx="2" ry="2" />
+<text  x="33.23" y="161.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel80_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (47,900 us, 0.16%)</title><rect x="739.3" y="263" width="1.9" height="15.0" fill="rgb(151.02287535279,159.135810989081,151.02287535279)" rx="2" ry="2" />
+<text  x="742.30" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel128_cell_to__cell_integral_otherwise (19,888 us, 0.07%)</title><rect x="1101.7" y="359" width="0.8" height="15.0" fill="rgb(155.041838253254,135.320759941613,135.320759941613)" rx="2" ry="2" />
+<text  x="1104.72" y="369.5" ></text>
+</g>
+<g >
+<title>firedrake.formmanipulation.ExtractSubBlock.split (4,714 us, 0.02%)</title><rect x="1185.4" y="167" width="0.2" height="15.0" fill="rgb(116.189001275423,147.160111441776,147.160111441776)" rx="2" ry="2" />
+<text  x="1188.38" y="177.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_130 (357,597 us, 1.21%)</title><rect x="1022.5" y="327" width="14.3" height="15.0" fill="rgb(118.152038039224,147.669046899058,147.669046899058)" rx="2" ry="2" />
+<text  x="1025.49" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel18_cell_to__cell_integral_otherwise (10,323 us, 0.03%)</title><rect x="694.0" y="279" width="0.4" height="15.0" fill="rgb(154.431167425046,130.638950258685,130.638950258685)" rx="2" ry="2" />
+<text  x="697.02" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel148_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (6,457 us, 0.02%)</title><rect x="1047.3" y="311" width="0.3" height="15.0" fill="rgb(155.943531865876,142.233744305053,142.233744305053)" rx="2" ry="2" />
+<text  x="1050.30" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel106_cell_to__cell_integral_otherwise (11,395 us, 0.04%)</title><rect x="1092.9" y="343" width="0.5" height="15.0" fill="rgb(138.849116287719,161.117585720604,138.849116287719)" rx="2" ry="2" />
+<text  x="1095.92" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel104_cell_to__cell_integral_otherwise (89,731 us, 0.30%)</title><rect x="882.4" y="311" width="3.6" height="15.0" fill="rgb(150.901211593059,150.901211593059,123.598179258671)" rx="2" ry="2" />
+<text  x="885.39" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_85 (24,646 us, 0.08%)</title><rect x="1038.9" y="343" width="1.0" height="15.0" fill="rgb(135.453828947476,152.15469639379,152.15469639379)" rx="2" ry="2" />
+<text  x="1041.89" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_105 (39,311 us, 0.13%)</title><rect x="1092.5" y="327" width="1.6" height="15.0" fill="rgb(152.263619564021,143.300525132804,152.263619564021)" rx="2" ry="2" />
+<text  x="1095.49" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_147 (10,263 us, 0.03%)</title><rect x="858.7" y="327" width="0.4" height="15.0" fill="rgb(131.594112460023,151.154029156302,151.154029156302)" rx="2" ry="2" />
+<text  x="861.70" y="337.5" ></text>
+</g>
+<g >
+<title>PCSetUp (27,453 us, 0.09%)</title><rect x="1179.8" y="215" width="1.1" height="15.0" fill="rgb(152.666434827947,117.109333680929,117.109333680929)" rx="2" ry="2" />
+<text  x="1182.78" y="225.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel143_cell_to__cell_integral_otherwise (7,133 us, 0.02%)</title><rect x="722.0" y="279" width="0.3" height="15.0" fill="rgb(148.605792692201,148.605792692201,112.474226123743)" rx="2" ry="2" />
+<text  x="724.99" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_41 (4,045 us, 0.01%)</title><rect x="696.4" y="263" width="0.1" height="15.0" fill="rgb(156.464428807331,146.227287522869,146.227287522869)" rx="2" ry="2" />
+<text  x="699.37" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel111_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (6,324 us, 0.02%)</title><rect x="1044.3" y="311" width="0.3" height="15.0" fill="rgb(131.951362080237,162.240475940426,131.951362080237)" rx="2" ry="2" />
+<text  x="1047.31" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel80_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (39,200 us, 0.13%)</title><rect x="1051.4" y="311" width="1.5" height="15.0" fill="rgb(154.578594818217,131.769226939666,131.769226939666)" rx="2" ry="2" />
+<text  x="1054.35" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel138_cell_to__cell_integral_otherwise (59,874 us, 0.20%)</title><rect x="1034.4" y="343" width="2.4" height="15.0" fill="rgb(124.769629924982,149.38471886944,149.38471886944)" rx="2" ry="2" />
+<text  x="1037.37" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel125_cell_to__cell_integral_otherwise (4,072 us, 0.01%)</title><rect x="704.5" y="311" width="0.1" height="15.0" fill="rgb(135.402281338549,161.678698386748,135.402281338549)" rx="2" ry="2" />
+<text  x="707.45" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_105 (119,222 us, 0.40%)</title><rect x="749.8" y="311" width="4.8" height="15.0" fill="rgb(141.517373288839,115.76326905265,141.517373288839)" rx="2" ry="2" />
+<text  x="752.83" y="321.5" ></text>
+</g>
+<g >
+<title>PCApply (27,166,268 us, 91.85%)</title><rect x="100.6" y="135" width="1083.8" height="15.0" fill="rgb(149.603285957376,159.366906937171,149.603285957376)" rx="2" ry="2" />
+<text  x="103.59" y="145.5" >PCApply</text>
+</g>
+<g >
+<title>Log_Event_subkernel141_cell_to__cell_integral_otherwise (17,807 us, 0.06%)</title><rect x="731.4" y="263" width="0.7" height="15.0" fill="rgb(153.987613858467,153.987613858467,138.555359467954)" rx="2" ry="2" />
+<text  x="734.36" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_form0_cell_integral_otherwise (9,628 us, 0.03%)</title><rect x="1187.5" y="167" width="0.4" height="15.0" fill="rgb(136.684167246087,152.473672989726,152.473672989726)" rx="2" ry="2" />
+<text  x="1190.48" y="177.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (5,827 us, 0.02%)</title><rect x="969.0" y="295" width="0.2" height="15.0" fill="rgb(107.674222408692,144.952576180031,144.952576180031)" rx="2" ry="2" />
+<text  x="971.95" y="305.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel148_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (32,187 us, 0.11%)</title><rect x="903.3" y="311" width="1.3" height="15.0" fill="rgb(105.017242923915,144.263729646941,144.263729646941)" rx="2" ry="2" />
+<text  x="906.28" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_3 (7,353 us, 0.02%)</title><rect x="175.6" y="215" width="0.3" height="15.0" fill="rgb(130.902699911184,162.411188386551,130.902699911184)" rx="2" ry="2" />
+<text  x="178.62" y="225.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_83 (58,600 us, 0.20%)</title><rect x="1038.7" y="327" width="2.4" height="15.0" fill="rgb(153.140609553467,120.74467324325,120.74467324325)" rx="2" ry="2" />
+<text  x="1041.72" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel149_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (6,468 us, 0.02%)</title><rect x="1049.3" y="311" width="0.3" height="15.0" fill="rgb(132.927598457265,151.49974774818,151.49974774818)" rx="2" ry="2" />
+<text  x="1052.33" y="321.5" ></text>
+</g>
+<g >
+<title>inv_getri (18,658 us, 0.06%)</title><rect x="1171.0" y="295" width="0.7" height="15.0" fill="rgb(154.891214581694,134.165978459658,134.165978459658)" rx="2" ry="2" />
+<text  x="1173.96" y="305.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel113_cell_to__cell_integral_otherwise (11,311 us, 0.04%)</title><rect x="1094.8" y="343" width="0.5" height="15.0" fill="rgb(145.580775553495,160.021734212222,145.580775553495)" rx="2" ry="2" />
+<text  x="1097.84" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_31 (3,892 us, 0.01%)</title><rect x="696.0" y="231" width="0.1" height="15.0" fill="rgb(152.075439939208,112.578372867263,112.578372867263)" rx="2" ry="2" />
+<text  x="698.99" y="241.5" ></text>
+</g>
+<g >
+<title>firedrake.assemble.allocate_matrix (3,633 us, 0.01%)</title><rect x="100.4" y="87" width="0.2" height="15.0" fill="rgb(146.577901605926,159.859411366477,146.577901605926)" rx="2" ry="2" />
+<text  x="103.45" y="97.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_95 (38,801 us, 0.13%)</title><rect x="1132.6" y="359" width="1.5" height="15.0" fill="rgb(133.738813025008,133.738813025008,153.304286391937)" rx="2" ry="2" />
+<text  x="1135.58" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel131_cell_to__cell_integral_otherwise (81,226 us, 0.27%)</title><rect x="715.5" y="295" width="3.2" height="15.0" fill="rgb(139.802877205356,153.282227423611,153.282227423611)" rx="2" ry="2" />
+<text  x="718.50" y="305.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_142 (71,880 us, 0.24%)</title><rect x="1125.4" y="327" width="2.9" height="15.0" fill="rgb(156.312704285428,145.06406618828,145.06406618828)" rx="2" ry="2" />
+<text  x="1128.42" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel149_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (10,376 us, 0.04%)</title><rect x="1145.7" y="327" width="0.4" height="15.0" fill="rgb(148.615802371905,148.615802371905,112.522734571538)" rx="2" ry="2" />
+<text  x="1148.72" y="337.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (9,129,207 us, 30.87%)</title><rect x="175.4" y="167" width="364.3" height="15.0" fill="rgb(154.36631507454,130.141748904807,130.141748904807)" rx="2" ry="2" />
+<text  x="178.45" y="177.5" >ParLoopExecute</text>
+</g>
+<g >
+<title>Log_Event_subkernel123_cell_to__cell_integral_otherwise (11,608 us, 0.04%)</title><rect x="1098.5" y="375" width="0.5" height="15.0" fill="rgb(148.383915078966,148.383915078966,111.398973074989)" rx="2" ry="2" />
+<text  x="1101.50" y="385.5" ></text>
+</g>
+<g >
+<title>firedrake.matrix_free.operators.ImplicitMatrixContext.mult (1,047,579 us, 3.54%)</title><rect x="1014.6" y="247" width="41.8" height="15.0" fill="rgb(139.461940063296,153.193836312706,153.193836312706)" rx="2" ry="2" />
+<text  x="1017.60" y="257.5" >fir..</text>
+</g>
+<g >
+<title>Log_Event_subkernel115_cell_to__cell_integral_otherwise (4,089 us, 0.01%)</title><rect x="1018.1" y="327" width="0.1" height="15.0" fill="rgb(129.452600555307,162.647251072392,129.452600555307)" rx="2" ry="2" />
+<text  x="1021.08" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_119 (444,517 us, 1.50%)</title><rect x="1019.0" y="311" width="17.8" height="15.0" fill="rgb(115.166751800438,146.895083800114,146.895083800114)" rx="2" ry="2" />
+<text  x="1022.02" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_slate_loopy_knl_70 (175,785 us, 0.59%)</title><rect x="1164.7" y="279" width="7.0" height="15.0" fill="rgb(153.692051241091,124.972392848362,124.972392848362)" rx="2" ry="2" />
+<text  x="1167.69" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel115_cell_to__cell_integral_otherwise (3,977 us, 0.01%)</title><rect x="702.1" y="279" width="0.2" height="15.0" fill="rgb(140.004206544995,140.004206544995,154.516943202257)" rx="2" ry="2" />
+<text  x="705.14" y="289.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_form1_cell_integral_otherwise (14,982 us, 0.05%)</title><rect x="1187.9" y="151" width="0.6" height="15.0" fill="rgb(127.934579634394,127.934579634394,152.18088638085)" rx="2" ry="2" />
+<text  x="1190.86" y="161.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel7_cell_to__cell_integral_otherwise (3,339 us, 0.01%)</title><rect x="175.8" y="231" width="0.1" height="15.0" fill="rgb(133.158987261646,133.158987261646,153.192062050641)" rx="2" ry="2" />
+<text  x="178.78" y="241.5" ></text>
+</g>
+<g >
+<title>firedrake.ufl_expr.action (3,633 us, 0.01%)</title><rect x="100.4" y="119" width="0.2" height="15.0" fill="rgb(147.015237144747,155.152098519008,155.152098519008)" rx="2" ry="2" />
+<text  x="103.45" y="129.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel125_cell_to__cell_integral_otherwise (4,074 us, 0.01%)</title><rect x="1020.4" y="359" width="0.2" height="15.0" fill="rgb(129.05442095622,162.712071007127,129.05442095622)" rx="2" ry="2" />
+<text  x="1023.39" y="369.5" ></text>
+</g>
+<g >
+<title>firedrake.pointquery_utils.to_reference_coordinates (308,593 us, 1.04%)</title><rect x="988.1" y="327" width="12.3" height="15.0" fill="rgb(152.577890489957,152.577890489957,131.723623143638)" rx="2" ry="2" />
+<text  x="991.07" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel121_cell_to__cell_integral_otherwise (17,708 us, 0.06%)</title><rect x="705.4" y="295" width="0.7" height="15.0" fill="rgb(127.417667951215,162.978519170732,127.417667951215)" rx="2" ry="2" />
+<text  x="708.41" y="305.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel146_cell_to__cell_integral_otherwise (96,798 us, 0.33%)</title><rect x="854.6" y="327" width="3.9" height="15.0" fill="rgb(132.921014382729,162.082625565602,132.921014382729)" rx="2" ry="2" />
+<text  x="857.62" y="337.5" ></text>
+</g>
+<g >
+<title>firedrake.ufl_expr.action (10,295 us, 0.03%)</title><rect x="99.7" y="87" width="0.4" height="15.0" fill="rgb(108.205792170562,145.090390562738,145.090390562738)" rx="2" ry="2" />
+<text  x="102.68" y="97.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel80_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (47,488 us, 0.16%)</title><rect x="1054.5" y="311" width="1.9" height="15.0" fill="rgb(152.456297780108,115.498282980831,115.498282980831)" rx="2" ry="2" />
+<text  x="1057.50" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_slate_loopy_knl_79 (1,061,886 us, 3.59%)</title><rect x="698.8" y="247" width="42.4" height="15.0" fill="rgb(131.54712322842,162.306282265141,131.54712322842)" rx="2" ry="2" />
+<text  x="701.85" y="257.5" >Log..</text>
+</g>
+<g >
+<title>Log_Event_subkernel89_cell_to__cell_integral_otherwise (6,573 us, 0.02%)</title><rect x="1039.6" y="359" width="0.3" height="15.0" fill="rgb(152.668201054588,152.668201054588,132.161282033774)" rx="2" ry="2" />
+<text  x="1042.61" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel108_cell_to__cell_integral_otherwise (19,584 us, 0.07%)</title><rect x="752.3" y="327" width="0.8" height="15.0" fill="rgb(141.101243113953,153.618840807321,153.618840807321)" rx="2" ry="2" />
+<text  x="755.30" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel133_cell_to__cell_integral_otherwise (33,412 us, 0.11%)</title><rect x="1025.3" y="359" width="1.3" height="15.0" fill="rgb(138.284466955999,161.209505379256,138.284466955999)" rx="2" ry="2" />
+<text  x="1028.26" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel116_cell_to__cell_integral_otherwise (95,947 us, 0.32%)</title><rect x="758.9" y="327" width="3.8" height="15.0" fill="rgb(154.476493476648,154.476493476648,140.924545309908)" rx="2" ry="2" />
+<text  x="761.91" y="337.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspacedata.FunctionSpaceData.__init__ (13,427 us, 0.05%)</title><rect x="30.5" y="119" width="0.5" height="15.0" fill="rgb(131.566594692145,131.566594692145,152.883857037189)" rx="2" ry="2" />
+<text  x="33.50" y="129.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel111_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (37,753 us, 0.13%)</title><rect x="1044.6" y="311" width="1.5" height="15.0" fill="rgb(132.112705774988,162.214210687793,132.112705774988)" rx="2" ry="2" />
+<text  x="1047.56" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel88_cell_to__cell_integral_otherwise (6,750 us, 0.02%)</title><rect x="1129.7" y="375" width="0.2" height="15.0" fill="rgb(153.302565505544,121.986335542503,121.986335542503)" rx="2" ry="2" />
+<text  x="1132.67" y="385.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_168 (70,026 us, 0.24%)</title><rect x="559.6" y="231" width="2.7" height="15.0" fill="rgb(149.977253205102,149.977253205102,119.120534763185)" rx="2" ry="2" />
+<text  x="562.55" y="241.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_137 (7,978 us, 0.03%)</title><rect x="1030.9" y="359" width="0.3" height="15.0" fill="rgb(144.361947540787,160.220148074756,144.361947540787)" rx="2" ry="2" />
+<text  x="1033.92" y="369.5" ></text>
+</g>
+<g >
+<title>SCSolve (12,197,630 us, 41.24%)</title><rect x="697.8" y="151" width="486.6" height="15.0" fill="rgb(149.940417513078,149.940417513078,118.942023332607)" rx="2" ry="2" />
+<text  x="700.80" y="161.5" >SCSolve</text>
+</g>
+<g >
+<title>Log_Event_subkernel113_cell_to__cell_integral_otherwise (33,714 us, 0.11%)</title><rect x="756.8" y="327" width="1.3" height="15.0" fill="rgb(112.737459104032,146.265267175119,146.265267175119)" rx="2" ry="2" />
+<text  x="759.77" y="337.5" ></text>
+</g>
+<g >
+<title>CreateExtMesh (75,364 us, 0.25%)</title><rect x="27.5" y="71" width="3.0" height="15.0" fill="rgb(142.190462564524,153.901231035247,153.901231035247)" rx="2" ry="2" />
+<text  x="30.49" y="81.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_161 (3,884 us, 0.01%)</title><rect x="559.4" y="231" width="0.2" height="15.0" fill="rgb(150.58498862081,150.58498862081,122.065714085465)" rx="2" ry="2" />
+<text  x="562.40" y="241.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel111_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (186,928 us, 0.63%)</title><rect x="888.5" y="311" width="7.4" height="15.0" fill="rgb(107.911252327091,145.014028381098,145.014028381098)" rx="2" ry="2" />
+<text  x="891.47" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel80_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (62,480 us, 0.21%)</title><rect x="1151.5" y="327" width="2.5" height="15.0" fill="rgb(117.380070839135,147.468907254591,147.468907254591)" rx="2" ry="2" />
+<text  x="1154.55" y="337.5" ></text>
+</g>
+<g >
+<title>PCSetUp (89,333 us, 0.30%)</title><rect x="1180.9" y="167" width="3.5" height="15.0" fill="rgb(140.94472007681,160.776440917729,140.94472007681)" rx="2" ry="2" />
+<text  x="1183.88" y="177.5" ></text>
+</g>
+<g >
+<title>CreateSparsity (7,032 us, 0.02%)</title><rect x="1181.5" y="199" width="0.2" height="15.0" fill="rgb(147.764133533672,147.764133533672,108.395416355488)" rx="2" ry="2" />
+<text  x="1184.46" y="209.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel108_cell_to__cell_integral_otherwise (6,451 us, 0.02%)</title><rect x="1093.4" y="343" width="0.2" height="15.0" fill="rgb(148.01106783985,148.01106783985,109.592097993119)" rx="2" ry="2" />
+<text  x="1096.38" y="353.5" ></text>
+</g>
+<g >
+<title>firedrake.variational_solver.LinearVariationalProblem.__init__ (19,238 us, 0.07%)</title><rect x="99.7" y="71" width="0.7" height="15.0" fill="rgb(144.688585859561,123.889501265125,144.688585859561)" rx="2" ry="2" />
+<text  x="102.68" y="81.5" ></text>
+</g>
+<g >
+<title>firedrake.extrusion_utils.make_extruded_coords (68,567 us, 0.23%)</title><rect x="27.5" y="87" width="2.7" height="15.0" fill="rgb(130.296630744961,150.817645007953,150.817645007953)" rx="2" ry="2" />
+<text  x="30.49" y="97.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel77_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (14,767 us, 0.05%)</title><rect x="1174.0" y="279" width="0.6" height="15.0" fill="rgb(153.654807728856,153.654807728856,136.942529762915)" rx="2" ry="2" />
+<text  x="1177.04" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_132 (201,553 us, 0.68%)</title><rect x="707.5" y="295" width="8.0" height="15.0" fill="rgb(155.600771810897,155.600771810897,146.372971083579)" rx="2" ry="2" />
+<text  x="710.46" y="305.5" ></text>
+</g>
+<g >
+<title>firedrake.matrix_free.operators.ImplicitMatrixContext.__init__ (3,633 us, 0.01%)</title><rect x="100.4" y="103" width="0.2" height="15.0" fill="rgb(131.022327302932,162.391714159988,131.022327302932)" rx="2" ry="2" />
+<text  x="103.45" y="113.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel146_cell_to__cell_integral_otherwise (19,586 us, 0.07%)</title><rect x="1037.8" y="327" width="0.8" height="15.0" fill="rgb(153.627743427239,153.627743427239,136.811371993541)" rx="2" ry="2" />
+<text  x="1040.78" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_slate_loopy_knl_79 (1,675,121 us, 5.66%)</title><rect x="1090.3" y="311" width="66.9" height="15.0" fill="rgb(109.995637898357,145.554424640315,145.554424640315)" rx="2" ry="2" />
+<text  x="1093.35" y="321.5" >Log_Ev..</text>
+</g>
+<g >
+<title>firedrake.pointquery_utils.to_reference_coordinates (307,821 us, 1.04%)</title><rect x="1002.3" y="295" width="12.3" height="15.0" fill="rgb(143.191699891323,143.191699891323,155.133877398321)" rx="2" ry="2" />
+<text  x="1005.32" y="305.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_82 (122,919 us, 0.42%)</title><rect x="723.2" y="263" width="4.9" height="15.0" fill="rgb(149.377134391118,159.403722308423,149.377134391118)" rx="2" ry="2" />
+<text  x="726.21" y="273.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_form0_cell_integral_otherwise (9,628 us, 0.03%)</title><rect x="1187.5" y="151" width="0.4" height="15.0" fill="rgb(112.389208024249,112.389208024249,149.172104778887)" rx="2" ry="2" />
+<text  x="1190.48" y="161.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_38 (18,904 us, 0.06%)</title><rect x="696.1" y="231" width="0.8" height="15.0" fill="rgb(112.925589833589,146.314041808708,146.314041808708)" rx="2" ry="2" />
+<text  x="699.15" y="241.5" ></text>
+</g>
+<g >
+<title>inv_getrf (15,604 us, 0.05%)</title><rect x="1170.3" y="295" width="0.7" height="15.0" fill="rgb(111.13445691069,111.13445691069,148.92924972465)" rx="2" ry="2" />
+<text  x="1173.34" y="305.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspacedata.get_shared_data (13,427 us, 0.05%)</title><rect x="30.5" y="103" width="0.5" height="15.0" fill="rgb(152.766224178305,117.874385367006,117.874385367006)" rx="2" ry="2" />
+<text  x="33.50" y="113.5" ></text>
+</g>
+<g >
+<title>CreateFunctionSpace (4,714 us, 0.02%)</title><rect x="1185.4" y="199" width="0.2" height="15.0" fill="rgb(131.307026108857,162.345367842744,131.307026108857)" rx="2" ry="2" />
+<text  x="1188.38" y="209.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel185_cell_to__cell_integral_otherwise (13,489 us, 0.05%)</title><rect x="560.9" y="279" width="0.6" height="15.0" fill="rgb(143.343506124203,143.343506124203,155.163259249846)" rx="2" ry="2" />
+<text  x="563.92" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel88_cell_to__cell_integral_otherwise (20,478 us, 0.07%)</title><rect x="863.2" y="359" width="0.8" height="15.0" fill="rgb(134.149693561783,96.8835897520698,134.149693561783)" rx="2" ry="2" />
+<text  x="866.16" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel148_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (6,532 us, 0.02%)</title><rect x="732.1" y="263" width="0.2" height="15.0" fill="rgb(129.33166906187,129.33166906187,152.451290786168)" rx="2" ry="2" />
+<text  x="735.07" y="273.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspaceimpl.FunctionSpace.__init__ (6,797 us, 0.02%)</title><rect x="30.2" y="119" width="0.3" height="15.0" fill="rgb(137.591472300601,137.591472300601,154.049962380761)" rx="2" ry="2" />
+<text  x="33.23" y="129.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (3,623 us, 0.01%)</title><rect x="955.7" y="311" width="0.2" height="15.0" fill="rgb(114.656526868445,146.762803262189,146.762803262189)" rx="2" ry="2" />
+<text  x="958.74" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_122 (45,549 us, 0.15%)</title><rect x="703.6" y="295" width="1.8" height="15.0" fill="rgb(135.134841968852,152.071996065999,152.071996065999)" rx="2" ry="2" />
+<text  x="706.59" y="305.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel187_cell_to__cell_integral_otherwise (9,829 us, 0.03%)</title><rect x="562.0" y="263" width="0.3" height="15.0" fill="rgb(156.655095907096,147.689068621067,147.689068621067)" rx="2" ry="2" />
+<text  x="564.95" y="273.5" ></text>
+</g>
+<g >
+<title>PCSetUp (563,359 us, 1.90%)</title><rect x="1157.3" y="231" width="22.5" height="15.0" fill="rgb(145.756968692483,159.9930516082,145.756968692483)" rx="2" ry="2" />
+<text  x="1160.31" y="241.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_expression_kernel (4,327 us, 0.01%)</title><rect x="1181.1" y="199" width="0.2" height="15.0" fill="rgb(142.590500693648,160.508523142895,142.590500693648)" rx="2" ry="2" />
+<text  x="1184.14" y="209.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel91_cell_to__cell_integral_otherwise (12,058 us, 0.04%)</title><rect x="1040.6" y="343" width="0.5" height="15.0" fill="rgb(108.350886047394,145.128007493769,145.128007493769)" rx="2" ry="2" />
+<text  x="1043.58" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel86_cell_to__cell_integral_otherwise (7,075 us, 0.02%)</title><rect x="723.8" y="311" width="0.3" height="15.0" fill="rgb(132.954177782431,93.8200805674804,132.954177782431)" rx="2" ry="2" />
+<text  x="726.81" y="321.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (900,348 us, 3.04%)</title><rect x="139.5" y="199" width="35.9" height="15.0" fill="rgb(132.716633585996,162.115896858094,132.716633585996)" rx="2" ry="2" />
+<text  x="142.53" y="209.5" >Pa..</text>
+</g>
+<g >
+<title>Log_Event_subkernel111_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (10,489 us, 0.04%)</title><rect x="1137.1" y="327" width="0.4" height="15.0" fill="rgb(146.783751715274,146.783751715274,155.829113235214)" rx="2" ry="2" />
+<text  x="1140.13" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel72_cell_to__cell_integral_otherwise (6,313 us, 0.02%)</title><rect x="1173.0" y="279" width="0.3" height="15.0" fill="rgb(150.131013913179,150.131013913179,119.865682810024)" rx="2" ry="2" />
+<text  x="1176.05" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_slate_loopy_knl_79 (5,115,556 us, 17.30%)</title><rect x="743.1" y="295" width="204.1" height="15.0" fill="rgb(117.884746125015,147.599748995374,147.599748995374)" rx="2" ry="2" />
+<text  x="746.10" y="305.5" >Log_Event_slate_loopy_kn..</text>
+</g>
+<g >
+<title>Log_Event_subkernel113_cell_to__cell_integral_otherwise (6,779 us, 0.02%)</title><rect x="1017.8" y="327" width="0.3" height="15.0" fill="rgb(122.542518123254,122.542518123254,151.137261572243)" rx="2" ry="2" />
+<text  x="1020.81" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel15_cell_to__cell_integral_otherwise (4,295 us, 0.01%)</title><rect x="693.8" y="279" width="0.2" height="15.0" fill="rgb(131.948471182433,131.948471182433,152.957768615955)" rx="2" ry="2" />
+<text  x="696.85" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_181 (31,868 us, 0.11%)</title><rect x="560.2" y="263" width="1.3" height="15.0" fill="rgb(140.888511161903,160.785591206202,140.888511161903)" rx="2" ry="2" />
+<text  x="563.18" y="273.5" ></text>
+</g>
+<g >
+<title>SNESSolve (27,305,559 us, 92.32%)</title><rect x="100.6" y="103" width="1089.4" height="15.0" fill="rgb(112.296900391295,146.151048249595,146.151048249595)" rx="2" ry="2" />
+<text  x="103.59" y="113.5" >SNESSolve</text>
+</g>
+<g >
+<title>firedrake.variational_solver.NonlinearVariationalSolver.solve (27,305,559 us, 92.32%)</title><rect x="100.6" y="87" width="1089.4" height="15.0" fill="rgb(119.861527449021,119.861527449021,150.618360151423)" rx="2" ry="2" />
+<text  x="103.59" y="97.5" >firedrake.variational_solver.NonlinearVariationalSolver.solve</text>
+</g>
+<g >
+<title>ParLoopExecute (1,047,579 us, 3.54%)</title><rect x="1014.6" y="263" width="41.8" height="15.0" fill="rgb(141.099883289682,114.693450929809,141.099883289682)" rx="2" ry="2" />
+<text  x="1017.60" y="273.5" >Par..</text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_132 (315,617 us, 1.07%)</title><rect x="1103.8" y="359" width="12.6" height="15.0" fill="rgb(137.232025824379,104.782066174972,137.232025824379)" rx="2" ry="2" />
+<text  x="1106.79" y="369.5" ></text>
+</g>
+<g >
+<title>CreateFunctionSpace (9,166 us, 0.03%)</title><rect x="1185.0" y="151" width="0.4" height="15.0" fill="rgb(151.136345007484,151.136345007484,124.737671959343)" rx="2" ry="2" />
+<text  x="1188.01" y="161.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel80_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (78,703 us, 0.27%)</title><rect x="1154.0" y="327" width="3.2" height="15.0" fill="rgb(153.719766395777,125.184875700958,125.184875700958)" rx="2" ry="2" />
+<text  x="1157.04" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel157_cell_to__cell_integral_otherwise (3,170 us, 0.01%)</title><rect x="559.3" y="247" width="0.1" height="15.0" fill="rgb(154.957025997148,134.670532644805,134.670532644805)" rx="2" ry="2" />
+<text  x="562.27" y="257.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel145_cell_to__cell_integral_otherwise (3,987 us, 0.01%)</title><rect x="722.3" y="279" width="0.1" height="15.0" fill="rgb(127.106579405084,163.029161492196,127.106579405084)" rx="2" ry="2" />
+<text  x="725.28" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_61 (3,898 us, 0.01%)</title><rect x="696.9" y="231" width="0.2" height="15.0" fill="rgb(104.328422168815,144.085146488211,144.085146488211)" rx="2" ry="2" />
+<text  x="699.90" y="241.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel84_cell_to__cell_integral_otherwise (17,717 us, 0.06%)</title><rect x="1039.9" y="343" width="0.7" height="15.0" fill="rgb(153.335337850278,122.237590185468,122.237590185468)" rx="2" ry="2" />
+<text  x="1042.87" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel91_cell_to__cell_integral_otherwise (59,862 us, 0.20%)</title><rect x="868.9" y="343" width="2.4" height="15.0" fill="rgb(154.307064223226,129.687492378066,129.687492378066)" rx="2" ry="2" />
+<text  x="871.89" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_134 (5,160 us, 0.02%)</title><rect x="1030.7" y="359" width="0.2" height="15.0" fill="rgb(131.440058494751,131.440058494751,152.859366160274)" rx="2" ry="2" />
+<text  x="1033.71" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_179 (57,529 us, 0.19%)</title><rect x="560.1" y="247" width="2.2" height="15.0" fill="rgb(107.963067012355,145.027461818018,145.027461818018)" rx="2" ry="2" />
+<text  x="563.05" y="257.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel123_cell_to__cell_integral_otherwise (7,055 us, 0.02%)</title><rect x="704.2" y="311" width="0.3" height="15.0" fill="rgb(150.507770066949,150.507770066949,121.691501093676)" rx="2" ry="2" />
+<text  x="707.17" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel96_cell_to__cell_integral_otherwise (6,734 us, 0.02%)</title><rect x="1041.5" y="359" width="0.3" height="15.0" fill="rgb(139.837881752131,160.956623900816,139.837881752131)" rx="2" ry="2" />
+<text  x="1044.50" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel71_interior_facet_horiz_top_to__exterior_facet_top_integral_otherwise (4,356 us, 0.01%)</title><rect x="1171.9" y="279" width="0.1" height="15.0" fill="rgb(117.672825789734,117.672825789734,150.194740475432)" rx="2" ry="2" />
+<text  x="1174.86" y="289.5" ></text>
+</g>
+<g >
+<title>firedrake.dmhooks.coarsen (774,913 us, 2.62%)</title><rect x="969.6" y="279" width="30.9" height="15.0" fill="rgb(153.051604317717,153.051604317717,134.019313232011)" rx="2" ry="2" />
+<text  x="972.60" y="289.5" >fi..</text>
+</g>
+<g >
+<title>firedrake.mg.interface.restrict (353,109 us, 1.19%)</title><rect x="1000.5" y="279" width="14.1" height="15.0" fill="rgb(143.666305552569,143.666305552569,155.225736558562)" rx="2" ry="2" />
+<text  x="1003.51" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel106_cell_to__cell_integral_otherwise (6,941 us, 0.02%)</title><rect x="1016.5" y="327" width="0.3" height="15.0" fill="rgb(152.116323581041,112.891814121318,112.891814121318)" rx="2" ry="2" />
+<text  x="1019.53" y="337.5" ></text>
+</g>
+<g >
+<title>KSPSolve (2,529,253 us, 8.55%)</title><rect x="1056.4" y="231" width="100.9" height="15.0" fill="rgb(123.208562774512,148.979997756355,148.979997756355)" rx="2" ry="2" />
+<text  x="1059.40" y="241.5" >KSPSolve</text>
+</g>
+<g >
+<title>Log_Event_subkernel109_cell_to__cell_integral_otherwise (6,571 us, 0.02%)</title><rect x="1017.0" y="327" width="0.2" height="15.0" fill="rgb(132.073908782038,162.220526477343,132.073908782038)" rx="2" ry="2" />
+<text  x="1019.97" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_mtf_solve_142 (45,159 us, 0.15%)</title><rect x="1036.8" y="311" width="1.8" height="15.0" fill="rgb(110.997234748745,110.997234748745,148.902690596531)" rx="2" ry="2" />
+<text  x="1039.76" y="321.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel94_cell_to__cell_integral_otherwise (16,204 us, 0.05%)</title><rect x="1042.7" y="343" width="0.6" height="15.0" fill="rgb(149.023554412305,149.023554412305,114.498763690401)" rx="2" ry="2" />
+<text  x="1045.68" y="353.5" ></text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_169 (12,497 us, 0.04%)</title><rect x="559.6" y="247" width="0.5" height="15.0" fill="rgb(142.288738486987,142.288738486987,154.959110674901)" rx="2" ry="2" />
+<text  x="562.55" y="257.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel80_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (64,207 us, 0.22%)</title><rect x="1149.0" y="327" width="2.5" height="15.0" fill="rgb(111.392444808725,145.916559765225,145.916559765225)" rx="2" ry="2" />
+<text  x="1151.98" y="337.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel131_cell_to__cell_integral_otherwise (128,834 us, 0.44%)</title><rect x="1116.4" y="359" width="5.1" height="15.0" fill="rgb(137.1422426462,137.1422426462,153.963014705716)" rx="2" ry="2" />
+<text  x="1119.38" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_form1_cell_integral_otherwise (14,982 us, 0.05%)</title><rect x="1187.9" y="167" width="0.6" height="15.0" fill="rgb(150.915473055754,150.915473055754,123.667292500964)" rx="2" ry="2" />
+<text  x="1190.86" y="177.5" ></text>
+</g>
+<g >
+<title>HybridBreak (7,090 us, 0.02%)</title><rect x="661.5" y="167" width="0.2" height="15.0" fill="rgb(136.625278736964,103.227276763471,136.625278736964)" rx="2" ry="2" />
+<text  x="664.46" y="177.5" ></text>
+</g>
+<g >
+<title>PCSetUp (1,138,429 us, 3.85%)</title><rect x="969.2" y="247" width="45.4" height="15.0" fill="rgb(137.719895570698,137.719895570698,154.074818497554)" rx="2" ry="2" />
+<text  x="972.18" y="257.5" >PCS..</text>
+</g>
+<g >
+<title>Log_Event_tensorshell_knl_114 (5,166 us, 0.02%)</title><rect x="762.7" y="327" width="0.2" height="15.0" fill="rgb(142.47478857651,118.216645727308,142.47478857651)" rx="2" ry="2" />
+<text  x="765.74" y="337.5" ></text>
+</g>
+<g >
+<title>CreateSparsity (22,673 us, 0.08%)</title><rect x="1182.6" y="199" width="0.9" height="15.0" fill="rgb(117.548153221194,117.548153221194,150.170610300876)" rx="2" ry="2" />
+<text  x="1185.57" y="209.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel133_cell_to__cell_integral_otherwise (166,208 us, 0.56%)</title><rect x="793.7" y="359" width="6.7" height="15.0" fill="rgb(137.284455796932,137.284455796932,153.990539831664)" rx="2" ry="2" />
+<text  x="796.74" y="369.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel94_cell_to__cell_integral_otherwise (16,698 us, 0.06%)</title><rect x="727.4" y="295" width="0.7" height="15.0" fill="rgb(113.545964649232,113.545964649232,149.395993157916)" rx="2" ry="2" />
+<text  x="730.45" y="305.5" ></text>
+</g>
+<g >
+<title>PCApply (1,685,513 us, 5.70%)</title><rect x="947.4" y="231" width="67.2" height="15.0" fill="rgb(149.027127724161,159.460700137927,149.027127724161)" rx="2" ry="2" />
+<text  x="950.36" y="241.5" >PCApply</text>
+</g>
+<g >
+<title>Log_Event_subkernel118_cell_to__cell_integral_otherwise (12,750 us, 0.04%)</title><rect x="730.9" y="263" width="0.5" height="15.0" fill="rgb(109.588509062887,145.448872720008,145.448872720008)" rx="2" ry="2" />
+<text  x="733.85" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel141_cell_to__cell_integral_otherwise (89,265 us, 0.30%)</title><rect x="898.4" y="311" width="3.6" height="15.0" fill="rgb(133.015579065761,162.067231314876,133.015579065761)" rx="2" ry="2" />
+<text  x="901.44" y="321.5" ></text>
+</g>
+<g >
+<title>firedrake.mg.embedded.TransferManager.op (6,869 us, 0.02%)</title><rect x="968.4" y="279" width="0.2" height="15.0" fill="rgb(152.023108109174,152.023108109174,129.035062375227)" rx="2" ry="2" />
+<text  x="971.36" y="289.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel84_cell_to__cell_integral_otherwise (18,083 us, 0.06%)</title><rect x="724.5" y="295" width="0.7" height="15.0" fill="rgb(141.486291638229,160.688278105405,141.486291638229)" rx="2" ry="2" />
+<text  x="727.52" y="305.5" ></text>
+</g>
+<g >
+<title>SNESFunctionEval (66,576 us, 0.23%)</title><rect x="1187.3" y="119" width="2.7" height="15.0" fill="rgb(154.01855264792,127.475570300722,127.475570300722)" rx="2" ry="2" />
+<text  x="1190.34" y="129.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel148_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (37,990 us, 0.13%)</title><rect x="732.6" y="263" width="1.5" height="15.0" fill="rgb(108.350702028811,145.127959785247,145.127959785247)" rx="2" ry="2" />
+<text  x="735.58" y="273.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel94_cell_to__cell_integral_otherwise (26,286 us, 0.09%)</title><rect x="1134.9" y="359" width="1.1" height="15.0" fill="rgb(148.325803351105,148.325803351105,111.117354701507)" rx="2" ry="2" />
+<text  x="1137.93" y="369.5" ></text>
+</g>
+<g >
+<title>firedrake.tsfc_interface.compile_form (19,614 us, 0.07%)</title><rect x="1183.7" y="183" width="0.7" height="15.0" fill="rgb(154.122610190391,128.273344792995,128.273344792995)" rx="2" ry="2" />
+<text  x="1186.66" y="193.5" ></text>
+</g>
+<g >
+<title>HybridRHS (903,548 us, 3.05%)</title><rect x="661.7" y="167" width="36.1" height="15.0" fill="rgb(136.050473091926,101.75433729806,136.050473091926)" rx="2" ry="2" />
+<text  x="664.75" y="177.5" >Hy..</text>
+</g>
+<g >
+<title>Log_Event_subkernel126_cell_to__cell_integral_otherwise (96,672 us, 0.33%)</title><rect x="770.3" y="359" width="3.8" height="15.0" fill="rgb(131.398779222732,151.103387205894,151.103387205894)" rx="2" ry="2" />
+<text  x="773.29" y="369.5" ></text>
+</g>
+<g >
+<title>firedrake.parloops.par_loop (5,869 us, 0.02%)</title><rect x="1187.1" y="151" width="0.2" height="15.0" fill="rgb(140.127332116446,112.201288548394,140.127332116446)" rx="2" ry="2" />
+<text  x="1190.11" y="161.5" ></text>
+</g>
+<g >
+<title>Log_Event_subkernel149_interior_facet_horiz_bottom_to__exterior_facet_bottom_integral_otherwise (6,288 us, 0.02%)</title><rect x="734.1" y="263" width="0.3" height="15.0" fill="rgb(145.33960013762,125.557725352651,145.33960013762)" rx="2" ry="2" />
+<text  x="737.10" y="273.5" ></text>
+</g>
+</g>
 </svg>
