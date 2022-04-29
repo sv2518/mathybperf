@@ -7,6 +7,13 @@ def solve_with_params(problem_bag, solver_bag):
     a, L, quadrature_degree = problem_bag.var_problem
     W, _, _ = problem_bag.space
 
+    approx_inner_schur=False
+    if ("hybridization" in solver_bag.perform_params.keys() 
+        and "localsolve" in solver_bag.perform_params["hybridization"].keys() 
+        and "approx" in solver_bag.perform_params["hybridization"]["localsolve"].keys()):
+        if solver_bag.perform_params["hybridization"]["localsolve"]["approx"]:
+            approx_inner_schur=True
+
     w = Function(W)
     vpb = LinearVariationalProblem(a, L, w)
     appctx = {"deform": problem_bag.deformation,
@@ -22,6 +29,10 @@ def solve_with_params(problem_bag, solver_bag):
         PETSc.Sys.pushErrorHandler("ignore")
         try:
             solver.solve()
+            if solver.snes.ksp.getIterationNumber()!=1 and not approx_inner_schur:
+                raise Exception("In the solver options you specified that you want the local solvers to be exact enough,\
+                                but the outer solver turns out to need more than 1 iteration.\
+                                So you might want to put the tolerances lower on the local solver to make it more accurate.")
         except Exception as e:
             raise e
     return w, solver
