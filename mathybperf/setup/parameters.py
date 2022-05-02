@@ -1200,6 +1200,7 @@ gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres = {'snes_
                                                                                                            'mat_type': 'matfree',  # local-matfree!
                                                                                                            'pc_type': 'fieldsplit',
                                                                                                            'pc_fieldsplit_type': 'schur',
+                                                                                                           "pc_fieldsplit_schur_fact_type": 'diag',
                                                                                                            'approx': False,
                                                                                                            'fieldsplit_0': {'ksp_type': 'default',
                                                                                                                             'pc_type': 'jacobi',
@@ -1213,6 +1214,6 @@ gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres = {'snes_
                                                                                                                             'ksp_atol': 1.e-12,
                                                                                                                             'ksp_rtol': 1.e-12}},
                                                                                             'pc_python_type': 'firedrake.GTMGPC',
-                                                                                            'gt': gt_params_fully_matfree,
+                                                                                            'gt': gt_params_fully_matfree_matexpmg_assembledjacobi,
                                                                                             'ksp_view': None,
                                                                                             'ksp_monitor': None}}
