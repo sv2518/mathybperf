@@ -1013,6 +1013,7 @@ gtmg_fully_matfree_params_matexpmg_assembledjacobi_cg = {'snes_type': 'ksponly',
                                                                            'mat_type': 'matfree',
                                                                            'ksp_rtol': 1.e-6,
                                                                            'ksp_atol': 1.e-6,
+                                                                           'ksp_max_it': 10,
                                                                            'localsolve': {'ksp_type': 'preonly',
                                                                                           'mat_type': 'matfree',  # local-matfree!
                                                                                           'pc_type': 'fieldsplit',
