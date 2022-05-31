@@ -1160,27 +1160,27 @@ class DGLaplacian3D(AuxiliaryOperatorPC):
     def form(self, pc, u, v):
         W = u.function_space()
         n = FacetNormal(W.mesh())
-        alpha = Constant(2.**3)
-        gamma = Constant(3.**3)
+        alpha = Constant(100)
+        gamma = Constant(200)
         h = CellVolume(W.mesh())/FacetArea(W.mesh())
         h_avg = (h('+') + h('-'))/2
 
-        a_dg = -(dot(grad(v), grad(u))*dx()
-                 - dot(grad(v), (u)*n)*ds_v()
-                 - dot(v*n, grad(u))*ds_v()
-                 + gamma/h*dot(v, u)*ds_v()
-                 - dot(grad(v), (u)*n)*ds_t()
-                 - dot(v*n, grad(u))*ds_t()
-                 + gamma/h*dot(v, u)*ds_t()
-                 - dot(grad(v), (u)*n)*ds_b()
-                 - dot(v*n, grad(u))*ds_b()
-                 + gamma/h*dot(v, u)*ds_b()
-                 - inner(jump(u, n), avg(grad(v)))*dS_v
-                 - inner(avg(grad(u)), jump(v, n), )*dS_v
-                 + alpha/h_avg * inner(jump(u, n), jump(v, n))*dS_v
-                 - inner(jump(u, n), avg(grad(v)))*dS_h
-                 - inner(avg(grad(u)), jump(v, n), )*dS_h
-                 + alpha/h_avg * inner(jump(u, n), jump(v, n))*dS_h)
+        a_dg = -(dot(grad(v), grad(u))*dx(degree=12)
+                 - dot(grad(v), (u)*n)*ds_v(degree=12)
+                 - dot(v*n, grad(u))*ds_v(degree=12)
+                 + gamma/h*dot(v, u)*ds_v(degree=12)
+                 - dot(grad(v), (u)*n)*ds_t(degree=12)
+                 - dot(v*n, grad(u))*ds_t(degree=12)
+                 + gamma/h*dot(v, u)*ds_t(degree=12)
+                 - dot(grad(v), (u)*n)*ds_b(degree=12)
+                 - dot(v*n, grad(u))*ds_b(degree=12)
+                 + gamma/h*dot(v, u)*ds_b(degree=12)
+                 - inner(jump(u, n), avg(grad(v)))*dS_v(degree=25)
+                 - inner(avg(grad(u)), jump(v, n), )*dS_v(degree=25)
+                 + alpha/h_avg * inner(jump(u, n), jump(v, n))*dS_v(degree=25)
+                 - inner(jump(u, n), avg(grad(v)))*dS_h(degree=25)
+                 - inner(avg(grad(u)), jump(v, n), )*dS_h(degree=25)
+                 + alpha/h_avg * inner(jump(u, n), jump(v, n))*dS_h(degree=25))
 
         bcs = []
         return (a_dg, bcs)
@@ -1254,3 +1254,36 @@ gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres = {'snes_
                                                                                             'gt': gt_params_fully_matfree_matexpmg_assembledjacobi,
                                                                                             'ksp_view': None,
                                                                                             'ksp_monitor': None}}
+
+gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres_outerfgmres = {'snes_type': 'ksponly',
+                                                                                      'mat_type': 'matfree',
+                                                                                      'ksp_type': 'fgmres',
+                                                                                      'ksp_converged_reason': None,
+                                                                                      'ksp_rtol': 1.e-5,
+                                                                                      'ksp_atol': 1.e-5,
+                                                                                      'ksp_max_it': 1000,
+                                                                                      'pc_type': 'python',
+                                                                                      'pc_python_type': 'firedrake.HybridizationPC',
+                                                                                      'hybridization': {'ksp_type': 'preonly',
+                                                                                                        'pc_type': 'python',
+                                                                                                        'mat_type': 'matfree',
+                                                                                                        'localsolve': {'ksp_type': 'preonly',
+                                                                                                                       'mat_type': 'matfree',  # local-matfree!
+                                                                                                                       'pc_type': 'fieldsplit',
+                                                                                                                       'pc_fieldsplit_type': 'schur',
+                                                                                                                       'approx': True,
+                                                                                                                       'fieldsplit_0': {'ksp_type': 'default',
+                                                                                                                                        'pc_type': 'jacobi',
+                                                                                                                                        'ksp_rtol': 1.e-25,
+                                                                                                                                        'ksp_atol': 1.e-50},
+                                                                                                                       'fieldsplit_1': {'ksp_type': 'default',
+                                                                                                                                        'pc_type': 'python',
+                                                                                                                                        'pc_python_type': __name__ + '.DGLaplacian3D',
+                                                                                                                                        'aux_ksp_type': 'preonly',
+                                                                                                                                        'aux_pc_type': 'jacobi',
+                                                                                                                                        'ksp_atol': 1.e-50,
+                                                                                                                                        'ksp_rtol': 1.e-25}},
+                                                                                                        'pc_python_type': 'firedrake.GTMGPC',
+                                                                                                        'gt': gt_params_fully_matfree_matexpmg_assembledjacobi,
+                                                                                                        'ksp_view': None,
+                                                                                                        'ksp_monitor': None}}
