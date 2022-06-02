@@ -7,10 +7,15 @@ def solve_with_params(problem_bag, solver_bag):
     a, L, quadrature_degree = problem_bag.var_problem
     W, _, _ = problem_bag.space
 
+    local_matfree = False
+    fcp = None
     approx_inner_schur=False
     if ("hybridization" in solver_bag.perform_params.keys() 
-        and "localsolve" in solver_bag.perform_params["hybridization"].keys() 
-        and "approx" in solver_bag.perform_params["hybridization"]["localsolve"].keys()):
+        and "localsolve" in solver_bag.perform_params["hybridization"].keys()):
+        if (("mat_type" in solver_bag.perform_params["hybridization"]["localsolve"].keys()) and
+            solver_bag.perform_params["hybridization"]["localsolve"]["mat_type"] == "matfree"):
+            local_matfree = True
+            fcp = {"slate_compiler": {"replace_mul": True}}
         if solver_bag.perform_params["hybridization"]["localsolve"]["approx"]:
             approx_inner_schur=True
 
