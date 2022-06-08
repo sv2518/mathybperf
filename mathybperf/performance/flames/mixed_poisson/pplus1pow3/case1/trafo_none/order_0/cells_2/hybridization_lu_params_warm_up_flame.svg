@@ -1,7 +1,820 @@
 <?xml version="1.0" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg version="1.1" width="1200" height="65" onload="init(evt)" viewBox="0 0 1200 65" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg version="1.1" width="1200" height="267" onload="init(evt)" viewBox="0 0 1200 267" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
 <!-- NOTES:  -->
-<text  x="600.00" y="26" >ERROR: No valid input provided to flamegraph.pl.</text>
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:13px; fill:rgb(0,0,0); }
+	#search, #ignorecase { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:18px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching, currentSearchTerm, ignorecase, ignorecaseBtn;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		ignorecaseBtn = document.getElementById("ignorecase");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+		currentSearchTerm = null;
+
+		// use GET parameters to restore a flamegraphs state.
+		var params = get_params();
+		if (params.x && params.y)
+			zoom(find_group(document.querySelector('[x="' + params.x + '"][y="' + params.y + '"]')));
+                if (params.s) search(params.s);
+	}
+
+	// event listeners
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom();
+			zoom(target);
+			if (!document.querySelector('.parent')) {
+				clearzoom();
+				return;
+			}
+
+			// set parameters for zoom state
+			var el = target.querySelector("rect");
+			if (el && el.attributes && el.attributes.y && el.attributes._orig_x) {
+				var params = get_params()
+				params.x = el.attributes._orig_x.value;
+				params.y = el.attributes.y.value;
+				history.replaceState(null, null, parse_params(params));
+			}
+		}
+		else if (e.target.id == "unzoom") clearzoom();
+		else if (e.target.id == "search") search_prompt();
+		else if (e.target.id == "ignorecase") toggle_ignorecase();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	// ctrl-I to toggle case-sensitive search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+		else if (e.ctrlKey && e.keyCode === 73) {
+			e.preventDefault();
+			toggle_ignorecase();
+		}
+	}, false)
+
+	// functions
+	function get_params() {
+		var params = {};
+		var paramsarr = window.location.search.substr(1).split('&');
+		for (var i = 0; i < paramsarr.length; ++i) {
+			var tmp = paramsarr[i].split("=");
+			if (!tmp[0] || !tmp[1]) continue;
+			params[tmp[0]]  = decodeURIComponent(tmp[1]);
+		}
+		return params;
+	}
+	function parse_params(params) {
+		var uri = "?";
+		for (var key in params) {
+			uri += key + '=' + encodeURIComponent(params[key]) + '&';
+		}
+		if (uri.slice(-1) == "&")
+			uri = uri.substring(0, uri.length - 1);
+		if (uri == '?')
+			uri = window.location.href.split('?')[0];
+		return uri;
+	}
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 13 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		// Fit in full text width
+		if (/^ *$/.test(txt) || t.getSubStringLength(0, txt.length) < w)
+			return;
+
+		for (var x = txt.length - 2; x > 0; x--) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (1 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+		search();
+	}
+	function unzoom() {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			update_text(el[i]);
+		}
+		search();
+	}
+	function clearzoom() {
+		unzoom();
+
+		// remove zoom state
+		var params = get_params();
+		if (params.x) delete params.x;
+		if (params.y) delete params.y;
+		history.replaceState(null, null, parse_params(params));
+	}
+
+	// search
+	function toggle_ignorecase() {
+		ignorecase = !ignorecase;
+		if (ignorecase) {
+			ignorecaseBtn.classList.add("show");
+		} else {
+			ignorecaseBtn.classList.remove("show");
+		}
+		reset_search();
+		search();
+	}
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+		var params = get_params();
+		delete params.s;
+		history.replaceState(null, null, parse_params(params));
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)"
+			    + (ignorecase ? ", ignoring case" : "")
+			    + "\nPress Ctrl-i to toggle case sensitivity", "");
+			if (term != null) search(term);
+		} else {
+			reset_search();
+			searching = 0;
+			currentSearchTerm = null;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		if (term) currentSearchTerm = term;
+
+		var re = new RegExp(currentSearchTerm, ignorecase ? 'i' : '');
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+		var params = get_params();
+		params.s = currentSearchTerm;
+		history.replaceState(null, null, parse_params(params));
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="267.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="26" >Firedrake example</text>
+<text id="details" x="10.00" y="249" > </text>
+<text id="unzoom" x="10.00" y="26" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="26" >Search</text>
+<text id="ignorecase" x="1174.00" y="26" >ic</text>
+<text id="matched" x="1090.00" y="249" > </text>
+<g id="frames">
+<g >
+<title>firedrake.mesh.MeshTopology._facets (16,515 us, 0.03%)</title><rect x="66.7" y="151" width="0.4" height="15.0" fill="rgb(131.885470064228,162.251202547684,131.885470064228)" rx="2" ry="2" />
+<text  x="69.74" y="161.5" ></text>
+</g>
+<g >
+<title>firedrake.ufl_expr.action (11,830 us, 0.02%)</title><rect x="67.2" y="87" width="0.2" height="15.0" fill="rgb(143.208271452091,154.165107413505,154.165107413505)" rx="2" ry="2" />
+<text  x="70.22" y="97.5" ></text>
+</g>
+<g >
+<title>firedrake.assemble.allocate_matrix (7,892 us, 0.01%)</title><rect x="1064.8" y="135" width="0.2" height="15.0" fill="rgb(150.736963966361,159.182354703151,150.736963966361)" rx="2" ry="2" />
+<text  x="1067.80" y="145.5" ></text>
+</g>
+<g >
+<title>firedrake.parloops.par_loop (708,176 us, 1.13%)</title><rect x="1065.5" y="135" width="13.3" height="15.0" fill="rgb(154.623389977025,154.623389977025,141.636428350199)" rx="2" ry="2" />
+<text  x="1068.53" y="145.5" ></text>
+</g>
+<g >
+<title>firedrake.formmanipulation.ExtractSubBlock.argument (6,848 us, 0.01%)</title><rect x="1065.0" y="167" width="0.1" height="15.0" fill="rgb(149.019668369958,159.461914451402,149.019668369958)" rx="2" ry="2" />
+<text  x="1067.95" y="177.5" ></text>
+</g>
+<g >
+<title>HybridOperatorAssembly (14,750,009 us, 23.45%)</title><rect x="788.1" y="135" width="276.7" height="15.0" fill="rgb(125.617550770539,163.27156150247,125.617550770539)" rx="2" ry="2" />
+<text  x="791.10" y="145.5" >HybridOperatorAssembly</text>
+</g>
+<g >
+<title>firedrake.functionspacedata.get_shared_data (16,515 us, 0.03%)</title><rect x="66.7" y="119" width="0.4" height="15.0" fill="rgb(120.566714561801,148.295074145652,148.295074145652)" rx="2" ry="2" />
+<text  x="69.74" y="129.5" ></text>
+</g>
+<g >
+<title>pyop2.global_kernel.GlobalKernel.compile (2,207,092 us, 3.51%)</title><rect x="1129.6" y="151" width="41.4" height="15.0" fill="rgb(121.730408070787,148.596772462797,148.596772462797)" rx="2" ry="2" />
+<text  x="1132.62" y="161.5" >pyo..</text>
+</g>
+<g >
+<title>firedrake.variational_solver.NonlinearVariationalSolver.__init__ (7,289 us, 0.01%)</title><rect x="67.6" y="71" width="0.2" height="15.0" fill="rgb(125.830450143815,163.23690346496,125.830450143815)" rx="2" ry="2" />
+<text  x="70.63" y="81.5" ></text>
+</g>
+<g >
+<title>firedrake.formmanipulation.split_form (6,529 us, 0.01%)</title><rect x="1189.9" y="135" width="0.1" height="15.0" fill="rgb(144.907013640634,124.449222454124,144.907013640634)" rx="2" ry="2" />
+<text  x="1192.88" y="145.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_wrap_slate_loopy_knl_14 (8,191,482 us, 13.02%)</title><rect x="105.8" y="167" width="153.6" height="15.0" fill="rgb(131.396856782273,131.396856782273,152.851004538505)" rx="2" ry="2" />
+<text  x="108.76" y="177.5" >Parloop_Cells_wrap..</text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_form0_cell_integral_otherwise (2,707,909 us, 4.30%)</title><rect x="1078.8" y="135" width="50.8" height="15.0" fill="rgb(147.616326081274,147.616326081274,107.679118701557)" rx="2" ry="2" />
+<text  x="1081.82" y="145.5" >Parl..</text>
+</g>
+<g >
+<title>firedrake.utility_meshes.SquareMesh (9,064 us, 0.01%)</title><rect x="67.1" y="71" width="0.1" height="15.0" fill="rgb(129.73855490508,162.600700364289,129.73855490508)" rx="2" ry="2" />
+<text  x="70.05" y="81.5" ></text>
+</g>
+<g >
+<title>firedrake.utility_meshes.RectangleMesh (9,064 us, 0.01%)</title><rect x="67.1" y="87" width="0.1" height="15.0" fill="rgb(141.576367865647,141.576367865647,154.821232490125)" rx="2" ry="2" />
+<text  x="70.05" y="97.5" ></text>
+</g>
+<g >
+<title>CreateFunctionSpace (14,122 us, 0.02%)</title><rect x="36.7" y="71" width="0.2" height="15.0" fill="rgb(153.80046360733,125.803554322863,125.803554322863)" rx="2" ry="2" />
+<text  x="39.65" y="81.5" ></text>
+</g>
+<g >
+<title>SNESFunctionEval (5,926,717 us, 9.42%)</title><rect x="1078.8" y="103" width="111.2" height="15.0" fill="rgb(125.287313014976,125.287313014976,151.668512196447)" rx="2" ry="2" />
+<text  x="1081.82" y="113.5" >SNESFunction..</text>
+</g>
+<g >
+<title>CreateFunctionSpace (16,515 us, 0.03%)</title><rect x="66.7" y="87" width="0.4" height="15.0" fill="rgb(126.041300176723,126.041300176723,151.814445195495)" rx="2" ry="2" />
+<text  x="69.74" y="97.5" ></text>
+</g>
+<g >
+<title>firedrake.tsfc_interface.compile_form (1,011,716 us, 1.61%)</title><rect x="1171.0" y="119" width="19.0" height="15.0" fill="rgb(142.066016998483,160.593904209549,142.066016998483)" rx="2" ry="2" />
+<text  x="1174.02" y="129.5" ></text>
+</g>
+<g >
+<title>MatLUFactor (13,026 us, 0.02%)</title><rect x="787.2" y="167" width="0.2" height="15.0" fill="rgb(152.153295966578,113.175269077099,113.175269077099)" rx="2" ry="2" />
+<text  x="790.17" y="177.5" ></text>
+</g>
+<g >
+<title>CreateExtMesh (969,860 us, 1.54%)</title><rect x="18.5" y="71" width="18.2" height="15.0" fill="rgb(155.847968794844,141.501094093803,141.501094093803)" rx="2" ry="2" />
+<text  x="21.46" y="81.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (4,915,001 us, 7.81%)</title><rect x="1078.8" y="119" width="92.2" height="15.0" fill="rgb(147.785133025558,147.785133025558,108.497183123856)" rx="2" ry="2" />
+<text  x="1081.82" y="129.5" >ParLoopExe..</text>
+</g>
+<g >
+<title>firedrake.functionspace.VectorFunctionSpace (16,515 us, 0.03%)</title><rect x="66.7" y="71" width="0.4" height="15.0" fill="rgb(148.221109762323,148.221109762323,110.609993463566)" rx="2" ry="2" />
+<text  x="69.74" y="81.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_par_loop_kernel (873,091 us, 1.39%)</title><rect x="551.2" y="199" width="16.3" height="15.0" fill="rgb(144.012976223857,154.373734576555,154.373734576555)" rx="2" ry="2" />
+<text  x="554.16" y="209.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_form1_cell_integral_otherwise (2,207,092 us, 3.51%)</title><rect x="1129.6" y="135" width="41.4" height="15.0" fill="rgb(154.60957107692,154.60957107692,141.569459834303)" rx="2" ry="2" />
+<text  x="1132.62" y="145.5" >Par..</text>
+</g>
+<g >
+<title>firedrake.parloops.par_loop (880,207 us, 1.40%)</title><rect x="551.0" y="167" width="16.5" height="15.0" fill="rgb(152.516873125818,115.962693964601,115.962693964601)" rx="2" ry="2" />
+<text  x="554.03" y="177.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_wrap_slate_loopy_knl_0 (10,878,472 us, 17.29%)</title><rect x="818.9" y="167" width="204.1" height="15.0" fill="rgb(129.478799871305,162.642986067462,129.478799871305)" rx="2" ry="2" />
+<text  x="821.88" y="177.5" >Parloop_Cells_wrap_wrap_..</text>
+</g>
+<g >
+<title>Log_Event_subkernel13_interior_facet_vert_to__exterior_facet_vert_integral_otherwise (6,554 us, 0.01%)</title><rect x="287.2" y="199" width="0.1" height="15.0" fill="rgb(152.962543349046,119.379499009354,119.379499009354)" rx="2" ry="2" />
+<text  x="290.17" y="209.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspacedata.get_shared_data (14,122 us, 0.02%)</title><rect x="36.7" y="103" width="0.2" height="15.0" fill="rgb(118.001292583842,147.629964743959,147.629964743959)" rx="2" ry="2" />
+<text  x="39.65" y="113.5" ></text>
+</g>
+<g >
+<title>pyop2.global_kernel.GlobalKernel.compile (930,161 us, 1.48%)</title><rect x="19.0" y="135" width="17.5" height="15.0" fill="rgb(153.803593014783,125.827546446671,125.827546446671)" rx="2" ry="2" />
+<text  x="22.04" y="145.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_wrap_slate_loopy_knl_7 (10,037,249 us, 15.96%)</title><rect x="285.8" y="183" width="188.3" height="15.0" fill="rgb(137.697325863091,105.974397524172,137.697325863091)" rx="2" ry="2" />
+<text  x="288.83" y="193.5" >Parloop_Cells_wrap_wra..</text>
+</g>
+<g >
+<title>firedrake.extrusion_utils.make_extruded_coords (961,438 us, 1.53%)</title><rect x="18.5" y="87" width="18.0" height="15.0" fill="rgb(142.803512126877,154.060169810672,154.060169810672)" rx="2" ry="2" />
+<text  x="21.46" y="97.5" ></text>
+</g>
+<g >
+<title>firedrake.formmanipulation.ExtractSubBlock.split (6,848 us, 0.01%)</title><rect x="1065.0" y="151" width="0.1" height="15.0" fill="rgb(132.444056337697,162.160269898515,132.444056337697)" rx="2" ry="2" />
+<text  x="1067.95" y="161.5" ></text>
+</g>
+<g >
+<title>CreateFunctionSpace (6,848 us, 0.01%)</title><rect x="1065.0" y="183" width="0.1" height="15.0" fill="rgb(105.682617764704,144.436234235294,144.436234235294)" rx="2" ry="2" />
+<text  x="1067.95" y="193.5" ></text>
+</g>
+<g >
+<title>firedrake.tsfc_interface.compile_form (2,212,657 us, 3.52%)</title><rect x="474.1" y="167" width="41.5" height="15.0" fill="rgb(156.548986052131,146.875559733008,146.875559733008)" rx="2" ry="2" />
+<text  x="477.12" y="177.5" >fir..</text>
+</g>
+<g >
+<title>pyop2.global_kernel.GlobalKernel.compile (9,959,202 us, 15.83%)</title><rect x="287.3" y="199" width="186.8" height="15.0" fill="rgb(129.377574271552,162.659464653468,129.377574271552)" rx="2" ry="2" />
+<text  x="290.30" y="209.5" >pyop2.global_kernel.Gl..</text>
+</g>
+<g >
+<title>firedrake.formmanipulation.ExtractSubBlock.split (6,529 us, 0.01%)</title><rect x="1189.9" y="151" width="0.1" height="15.0" fill="rgb(153.793167519358,125.747617648409,125.747617648409)" rx="2" ry="2" />
+<text  x="1192.88" y="161.5" ></text>
+</g>
+<g >
+<title>HybridInit (15,533,835 us, 24.70%)</title><rect x="787.4" y="119" width="291.4" height="15.0" fill="rgb(133.990396517322,133.990396517322,153.352979971094)" rx="2" ry="2" />
+<text  x="790.41" y="129.5" >HybridInit</text>
+</g>
+<g >
+<title>firedrake.functionspace.VectorFunctionSpace (8,422 us, 0.01%)</title><rect x="36.5" y="87" width="0.2" height="15.0" fill="rgb(118.925391088543,118.925391088543,150.43717246875)" rx="2" ry="2" />
+<text  x="39.49" y="97.5" ></text>
+</g>
+<g >
+<title>firedrake.tsfc_interface.compile_form (1,603,295 us, 2.55%)</title><rect x="757.1" y="167" width="30.1" height="15.0" fill="rgb(120.077596492121,120.077596492121,150.660179966217)" rx="2" ry="2" />
+<text  x="760.09" y="177.5" >f..</text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_par_loop_kernel (871,881 us, 1.39%)</title><rect x="89.4" y="199" width="16.4" height="15.0" fill="rgb(130.976571504924,162.399162778268,130.976571504924)" rx="2" ry="2" />
+<text  x="92.40" y="209.5" ></text>
+</g>
+<g >
+<title>CreateFunctionSpace (11,751 us, 0.02%)</title><rect x="787.9" y="135" width="0.2" height="15.0" fill="rgb(127.640517672203,162.942241309176,127.640517672203)" rx="2" ry="2" />
+<text  x="790.88" y="145.5" ></text>
+</g>
+<g >
+<title>pyop2.global_kernel.GlobalKernel.compile (8,149,378 us, 12.96%)</title><rect x="106.5" y="183" width="152.9" height="15.0" fill="rgb(152.480834566068,115.686398339852,115.686398339852)" rx="2" ry="2" />
+<text  x="109.55" y="193.5" >pyop2.global_kern..</text>
+</g>
+<g >
+<title>firedrake.functionspaceimpl.FunctionSpace.__init__ (14,122 us, 0.02%)</title><rect x="36.7" y="87" width="0.2" height="15.0" fill="rgb(155.820347728696,155.820347728696,147.437069762142)" rx="2" ry="2" />
+<text  x="39.65" y="97.5" ></text>
+</g>
+<g >
+<title>RecoverFirstElim (13,657,595 us, 21.71%)</title><rect x="259.4" y="151" width="256.2" height="15.0" fill="rgb(108.432961879528,108.432961879528,148.406379718618)" rx="2" ry="2" />
+<text  x="262.43" y="161.5" >RecoverFirstElim</text>
+</g>
+<g >
+<title>firedrake.interpolation.make_interpolator (24,136 us, 0.04%)</title><rect x="1065.1" y="135" width="0.4" height="15.0" fill="rgb(148.211626770733,148.211626770733,110.564037427397)" rx="2" ry="2" />
+<text  x="1068.08" y="145.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (10,878,472 us, 17.29%)</title><rect x="818.9" y="151" width="204.1" height="15.0" fill="rgb(134.017508969589,96.5448667345725,134.017508969589)" rx="2" ry="2" />
+<text  x="821.88" y="161.5" >ParLoopExecute</text>
+</g>
+<g >
+<title>firedrake.ufl_expr.adjoint (10,136 us, 0.02%)</title><rect x="67.4" y="103" width="0.2" height="15.0" fill="rgb(142.207112763208,142.207112763208,154.943312147718)" rx="2" ry="2" />
+<text  x="70.44" y="113.5" ></text>
+</g>
+<g >
+<title>SCSolve (13,026 us, 0.02%)</title><rect x="787.2" y="135" width="0.2" height="15.0" fill="rgb(139.147296865803,161.069044696265,139.147296865803)" rx="2" ry="2" />
+<text  x="790.17" y="145.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_wrap_slate_loopy_knl_4 (8,952,235 us, 14.23%)</title><rect x="589.2" y="183" width="167.9" height="15.0" fill="rgb(154.963140345093,134.717409312377,134.717409312377)" rx="2" ry="2" />
+<text  x="592.16" y="193.5" >Parloop_Cells_wrap_..</text>
+</g>
+<g >
+<title>pyop2.global_kernel.GlobalKernel.compile (8,913,422 us, 14.17%)</title><rect x="589.9" y="199" width="167.2" height="15.0" fill="rgb(151.776522884718,151.776522884718,127.840072441327)" rx="2" ry="2" />
+<text  x="592.88" y="209.5" >pyop2.global_kernel..</text>
+</g>
+<g >
+<title>firedrake.__init__ (1,549,674 us, 2.46%)</title><rect x="37.7" y="71" width="29.0" height="15.0" fill="rgb(154.911183025507,134.319069862218,134.319069862218)" rx="2" ry="2" />
+<text  x="40.67" y="81.5" >f..</text>
+</g>
+<g >
+<title>KSPSolve (38,361,890 us, 60.99%)</title><rect x="67.8" y="103" width="719.6" height="15.0" fill="rgb(143.118477427173,160.422573442088,143.118477427173)" rx="2" ry="2" />
+<text  x="70.77" y="113.5" >KSPSolve</text>
+</g>
+<g >
+<title>SNESSolve (59,822,442 us, 95.10%)</title><rect x="67.8" y="87" width="1122.2" height="15.0" fill="rgb(154.842406604152,154.842406604152,142.69781662012)" rx="2" ry="2" />
+<text  x="70.77" y="97.5" >SNESSolve</text>
+</g>
+<g >
+<title>HybridProject (878,735 us, 1.40%)</title><rect x="89.3" y="151" width="16.5" height="15.0" fill="rgb(123.122915666083,148.957792950466,148.957792950466)" rx="2" ry="2" />
+<text  x="92.27" y="161.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (873,091 us, 1.39%)</title><rect x="551.2" y="183" width="16.3" height="15.0" fill="rgb(156.7572896421,148.472553922767,148.472553922767)" rx="2" ry="2" />
+<text  x="554.16" y="193.5" ></text>
+</g>
+<g >
+<title>Log_Event_slate_loopy_knl_7 (42,951 us, 0.07%)</title><rect x="286.4" y="199" width="0.8" height="15.0" fill="rgb(153.867663883276,126.318756438447,126.318756438447)" rx="2" ry="2" />
+<text  x="289.37" y="209.5" ></text>
+</g>
+<g >
+<title>CreateFunctionSpace (8,422 us, 0.01%)</title><rect x="36.5" y="103" width="0.2" height="15.0" fill="rgb(148.84115242094,134.530453078659,148.84115242094)" rx="2" ry="2" />
+<text  x="39.49" y="113.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_pyop2_kernel_uniform_extrusion (930,161 us, 1.48%)</title><rect x="19.0" y="119" width="17.5" height="15.0" fill="rgb(145.408144354253,160.049836965587,145.408144354253)" rx="2" ry="2" />
+<text  x="22.04" y="129.5" ></text>
+</g>
+<g >
+<title>firedrake.tsfc_interface.compile_form (1,886,797 us, 3.00%)</title><rect x="515.6" y="151" width="35.4" height="15.0" fill="rgb(143.529109488827,154.248287645251,154.248287645251)" rx="2" ry="2" />
+<text  x="518.63" y="161.5" >fi..</text>
+</g>
+<g >
+<title>firedrake.functionspacedata.FunctionSpaceData.__init__ (16,515 us, 0.03%)</title><rect x="66.7" y="135" width="0.4" height="15.0" fill="rgb(147.902767756157,147.902767756157,109.067259125994)" rx="2" ry="2" />
+<text  x="69.74" y="145.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspacedata.get_shared_data (8,422 us, 0.01%)</title><rect x="36.5" y="135" width="0.2" height="15.0" fill="rgb(120.959128235723,120.959128235723,150.830799013366)" rx="2" ry="2" />
+<text  x="39.49" y="145.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (930,161 us, 1.48%)</title><rect x="19.0" y="103" width="17.5" height="15.0" fill="rgb(114.50453913587,114.50453913587,149.581523703717)" rx="2" ry="2" />
+<text  x="22.04" y="113.5" ></text>
+</g>
+<g >
+<title>firedrake.parloops.par_loop (878,735 us, 1.40%)</title><rect x="89.3" y="167" width="16.5" height="15.0" fill="rgb(153.163247269229,153.163247269229,134.56035215088)" rx="2" ry="2" />
+<text  x="92.27" y="177.5" ></text>
+</g>
+<g >
+<title>pyop2.global_kernel.GlobalKernel.compile (871,881 us, 1.39%)</title><rect x="89.4" y="215" width="16.4" height="15.0" fill="rgb(127.364365335443,127.364365335443,152.070522322989)" rx="2" ry="2" />
+<text  x="92.40" y="225.5" ></text>
+</g>
+<g >
+<title>firedrake.matrix_free.operators.ImplicitMatrixContext.__init__ (7,289 us, 0.01%)</title><rect x="67.6" y="103" width="0.2" height="15.0" fill="rgb(142.051537681423,117.132065308645,142.051537681423)" rx="2" ry="2" />
+<text  x="70.63" y="113.5" ></text>
+</g>
+<g >
+<title>Log_Event_slate_loopy_knl_14 (11,666 us, 0.02%)</title><rect x="106.3" y="183" width="0.2" height="15.0" fill="rgb(132.144145248694,151.296630249661,151.296630249661)" rx="2" ry="2" />
+<text  x="109.33" y="193.5" ></text>
+</g>
+<g >
+<title>PCSetUp (15,533,835 us, 24.70%)</title><rect x="787.4" y="103" width="291.4" height="15.0" fill="rgb(111.410899389475,145.92134428616,145.92134428616)" rx="2" ry="2" />
+<text  x="790.41" y="113.5" >PCSetUp</text>
+</g>
+<g >
+<title>ParLoopExecute (10,037,249 us, 15.96%)</title><rect x="285.8" y="167" width="188.3" height="15.0" fill="rgb(111.578146562251,145.964704664287,145.964704664287)" rx="2" ry="2" />
+<text  x="288.83" y="177.5" >ParLoopExecute</text>
+</g>
+<g >
+<title>firedrake.tsfc_interface.compile_form (2,230,899 us, 3.55%)</title><rect x="1023.0" y="151" width="41.8" height="15.0" fill="rgb(154.837981350273,133.75785701876,133.75785701876)" rx="2" ry="2" />
+<text  x="1025.95" y="161.5" >fir..</text>
+</g>
+<g >
+<title>HybridRHS (11,707,791 us, 18.61%)</title><rect x="567.5" y="151" width="219.7" height="15.0" fill="rgb(152.971688994701,119.449615626042,119.449615626042)" rx="2" ry="2" />
+<text  x="570.54" y="161.5" >HybridRHS</text>
+</g>
+<g >
+<title>Log_Event_slate_loopy_knl_0 (12,289 us, 0.02%)</title><rect x="819.8" y="183" width="0.2" height="15.0" fill="rgb(128.702537102537,162.769354425168,128.702537102537)" rx="2" ry="2" />
+<text  x="822.76" y="193.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (8,191,482 us, 13.02%)</title><rect x="105.8" y="151" width="153.6" height="15.0" fill="rgb(107.707116562365,144.961104293947,144.961104293947)" rx="2" ry="2" />
+<text  x="108.76" y="161.5" >ParLoopExecute</text>
+</g>
+<g >
+<title>HybridBreak (880,207 us, 1.40%)</title><rect x="551.0" y="151" width="16.5" height="15.0" fill="rgb(155.040747325336,135.312396160912,135.312396160912)" rx="2" ry="2" />
+<text  x="554.03" y="161.5" ></text>
+</g>
+<g >
+<title>firedrake.assemble.allocate_matrix (7,289 us, 0.01%)</title><rect x="67.6" y="87" width="0.2" height="15.0" fill="rgb(143.130182116636,154.144862030239,154.144862030239)" rx="2" ry="2" />
+<text  x="70.63" y="97.5" ></text>
+</g>
+<g >
+<title>SCBackSub (25,760,866 us, 40.95%)</title><rect x="67.8" y="135" width="483.2" height="15.0" fill="rgb(153.317256953054,122.098969973416,122.098969973416)" rx="2" ry="2" />
+<text  x="70.77" y="145.5" >SCBackSub</text>
+</g>
+<g >
+<title>firedrake.variational_solver.NonlinearVariationalSolver.solve (59,822,442 us, 95.10%)</title><rect x="67.8" y="71" width="1122.2" height="15.0" fill="rgb(115.646863385733,115.646863385733,149.802618719819)" rx="2" ry="2" />
+<text  x="70.77" y="81.5" >firedrake.variational_solver.NonlinearVariationalSolver.solve</text>
+</g>
+<g >
+<title>ParLoopExecute (708,176 us, 1.13%)</title><rect x="1065.5" y="151" width="13.3" height="15.0" fill="rgb(144.323532529877,160.226401681183,144.323532529877)" rx="2" ry="2" />
+<text  x="1068.53" y="161.5" ></text>
+</g>
+<g >
+<title>firedrake (62,902,037 us, 100.00%)</title><rect x="10.0" y="55" width="1180.0" height="15.0" fill="rgb(148.591430698029,148.591430698029,112.404625690447)" rx="2" ry="2" />
+<text  x="13.00" y="65.5" >firedrake</text>
+</g>
+<g >
+<title>Log_Event_slate_loopy_knl_4 (11,722 us, 0.02%)</title><rect x="589.7" y="199" width="0.2" height="15.0" fill="rgb(153.335411509373,122.238154905197,122.238154905197)" rx="2" ry="2" />
+<text  x="592.66" y="209.5" ></text>
+</g>
+<g >
+<title>pyop2.global_kernel.GlobalKernel.compile (708,176 us, 1.13%)</title><rect x="1065.5" y="183" width="13.3" height="15.0" fill="rgb(139.067170844629,109.484625289361,139.067170844629)" rx="2" ry="2" />
+<text  x="1068.53" y="193.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspacedata.FunctionSpaceData.__init__ (14,122 us, 0.02%)</title><rect x="36.7" y="119" width="0.2" height="15.0" fill="rgb(129.551337267854,129.551337267854,152.493807213133)" rx="2" ry="2" />
+<text  x="39.65" y="129.5" ></text>
+</g>
+<g >
+<title>SCForwardElim (12,587,998 us, 20.01%)</title><rect x="551.0" y="135" width="236.2" height="15.0" fill="rgb(153.798098975494,125.785425478788,125.785425478788)" rx="2" ry="2" />
+<text  x="554.03" y="145.5" >SCForwardElim</text>
+</g>
+<g >
+<title>pyop2.global_kernel.GlobalKernel.compile (873,091 us, 1.39%)</title><rect x="551.2" y="215" width="16.3" height="15.0" fill="rgb(125.321429172139,163.31976734407,125.321429172139)" rx="2" ry="2" />
+<text  x="554.16" y="225.5" ></text>
+</g>
+<g >
+<title>CreateMesh (16,394 us, 0.03%)</title><rect x="36.9" y="71" width="0.3" height="15.0" fill="rgb(136.073092710157,152.315246258189,152.315246258189)" rx="2" ry="2" />
+<text  x="39.92" y="81.5" ></text>
+</g>
+<g >
+<title>pyop2.global_kernel.GlobalKernel.compile (2,707,909 us, 4.30%)</title><rect x="1078.8" y="151" width="50.8" height="15.0" fill="rgb(151.622248701349,151.622248701349,127.09243601423)" rx="2" ry="2" />
+<text  x="1081.82" y="161.5" >pyop..</text>
+</g>
+<g >
+<title>firedrake.functionspacedata.FunctionSpaceData.__init__ (8,422 us, 0.01%)</title><rect x="36.5" y="151" width="0.2" height="15.0" fill="rgb(155.455970853698,138.495776545017,138.495776545017)" rx="2" ry="2" />
+<text  x="39.49" y="161.5" ></text>
+</g>
+<g >
+<title>pyop2.global_kernel.GlobalKernel.compile (10,819,094 us, 17.20%)</title><rect x="820.0" y="183" width="203.0" height="15.0" fill="rgb(118.050689483886,147.642771347674,147.642771347674)" rx="2" ry="2" />
+<text  x="823.00" y="193.5" >pyop2.global_kernel.Glob..</text>
+</g>
+<g >
+<title>all (62,902,037 us, 100%)</title><rect x="10.0" y="39" width="1180.0" height="15.0" fill="rgb(111.808086215666,146.024318648506,146.024318648506)" rx="2" ry="2" />
+<text  x="13.00" y="49.5" ></text>
+</g>
+<g >
+<title>firedrake.functionspaceimpl.FunctionSpace.__init__ (8,422 us, 0.01%)</title><rect x="36.5" y="119" width="0.2" height="15.0" fill="rgb(149.455347850078,149.455347850078,116.59130111961)" rx="2" ry="2" />
+<text  x="39.49" y="129.5" ></text>
+</g>
+<g >
+<title>PCApply (38,361,890 us, 60.99%)</title><rect x="67.8" y="119" width="719.6" height="15.0" fill="rgb(142.792530864017,154.057322816597,154.057322816597)" rx="2" ry="2" />
+<text  x="70.77" y="129.5" >PCApply</text>
+</g>
+<g >
+<title>ParLoopExecute (871,881 us, 1.39%)</title><rect x="89.4" y="183" width="16.4" height="15.0" fill="rgb(121.450557622483,121.450557622483,150.925914378545)" rx="2" ry="2" />
+<text  x="92.40" y="193.5" ></text>
+</g>
+<g >
+<title>PCSetUp (13,026 us, 0.02%)</title><rect x="787.2" y="151" width="0.2" height="15.0" fill="rgb(106.453204322261,144.636015935401,144.636015935401)" rx="2" ry="2" />
+<text  x="790.17" y="161.5" ></text>
+</g>
+<g >
+<title>PetscBarrier (23,907 us, 0.04%)</title><rect x="37.2" y="71" width="0.5" height="15.0" fill="rgb(133.188475107507,94.4204674629874,133.188475107507)" rx="2" ry="2" />
+<text  x="40.22" y="81.5" ></text>
+</g>
+<g >
+<title>firedrake.variational_solver.LinearVariationalProblem.__init__ (21,966 us, 0.03%)</title><rect x="67.2" y="71" width="0.4" height="15.0" fill="rgb(137.948039568232,152.801343591764,152.801343591764)" rx="2" ry="2" />
+<text  x="70.22" y="81.5" ></text>
+</g>
+<g >
+<title>firedrake.variational_solver.NonlinearVariationalProblem.__init__ (10,136 us, 0.02%)</title><rect x="67.4" y="87" width="0.2" height="15.0" fill="rgb(144.684133441385,160.167699207216,144.684133441385)" rx="2" ry="2" />
+<text  x="70.44" y="97.5" ></text>
+</g>
+<g >
+<title>firedrake.formmanipulation.split_form (6,848 us, 0.01%)</title><rect x="1065.0" y="135" width="0.1" height="15.0" fill="rgb(142.336607542558,160.549854586095,142.336607542558)" rx="2" ry="2" />
+<text  x="1067.95" y="145.5" ></text>
+</g>
+<g >
+<title>Parloop_Cells_wrap_par_loop_kernel (708,176 us, 1.13%)</title><rect x="1065.5" y="167" width="13.3" height="15.0" fill="rgb(155.209429308267,136.605624696717,136.605624696717)" rx="2" ry="2" />
+<text  x="1068.53" y="177.5" ></text>
+</g>
+<g >
+<title>ParLoopExecute (8,952,235 us, 14.23%)</title><rect x="589.2" y="167" width="167.9" height="15.0" fill="rgb(144.27227629416,160.234745719555,144.27227629416)" rx="2" ry="2" />
+<text  x="592.16" y="177.5" >ParLoopExecute</text>
+</g>
+<g >
+<title>firedrake.functionspaceimpl.FunctionSpace.__init__ (16,515 us, 0.03%)</title><rect x="66.7" y="103" width="0.4" height="15.0" fill="rgb(148.972164789064,148.972164789064,114.249721670078)" rx="2" ry="2" />
+<text  x="69.74" y="113.5" ></text>
+</g>
+</g>
 </svg>
