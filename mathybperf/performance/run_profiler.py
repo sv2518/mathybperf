@@ -85,9 +85,8 @@ if args.projectexactsol:
     data_to_tex.update(accuracy_data)
 
 # get iterations
-hyb = solver.snes.ksp.pc.getPythonContext()
-# gtmg = hyb.trace_ksp.pc.getPythonContext()
-its = {'outer_its': hyb.trace_ksp.its}
+pc = solver.snes.ksp.pc.getPythonContext() if solver.snes.ksp.pc.getType() == "python" else None
+its = {'outer_its': pc.trace_ksp.its} if pc and hasattr(pc, "trace_ksp") else {'outer_its': 0}
 
 if not args.verification:
     # write out data to .csv
