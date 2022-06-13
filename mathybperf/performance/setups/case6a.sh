@@ -1,12 +1,12 @@
 #!/bin/sh
 
 export ORDERS=(0 1 2 3 4 5 6)
-export LEVELS=0
+export LEVELS=2
 export SCALING=(1)
 export DEFORM=(0)
 export TRAFO='none' # 'affine'
 export ATQD=(0 0)
-export CELLSPD=(6)
+export CELLSPD=(2)
 export QUADS=true
 export FLAME=true
 export BASEP='hybridization_lu_params'
