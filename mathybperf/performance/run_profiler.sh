@@ -179,6 +179,7 @@ then
                     then
                         FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
                     fi
+                    echo  $NNAME"_log.txt"
                     python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --clean $PROJECTEXACTSOL $VERIFICATION > $NNAME"_log.txt"
                     retcode=$?
 
@@ -227,8 +228,9 @@ then
                         LINKS=$LINKS'\url{'$short_url'}\\\\\n'
                         CURLS=$CURLS"curl "$WEBPAGE$FNAME"_flame.svg>"$FNAME"_flame.svg\n"
                     else
-                        if [ $retcode == 1 ]
+                        if ! [ $retcode == 0 ]
                         then
+                            echo "WE have a problem"
                             exit 1
                         fi
                     fi
