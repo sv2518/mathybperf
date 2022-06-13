@@ -1,5 +1,6 @@
 from firedrake import *
 from firedrake.petsc import PETSc
+import time
 
 
 def solve_with_params(problem_bag, solver_bag):
@@ -30,16 +31,26 @@ def solve_with_params(problem_bag, solver_bag):
     solver = LinearVariationalSolver(vpb,
                                      solver_parameters=solver_bag.perform_params,
                                      appctx=appctx)
-    with PETSc.Log.Event("perfsolve"):
-        PETSc.Sys.pushErrorHandler("ignore")
-        try:
-            solver.solve()
-            if solver.snes.ksp.getIterationNumber()!=1 and not approx_inner_schur:
-                raise Exception("In the solver options you specified that you want the local solvers to be exact enough,\
-                                but the outer solver turns out to need more than 1 iteration.\
-                                So you might want to put the tolerances lower on the local solver to make it more accurate.")
-        except Exception as e:
-            raise e
+    PETSc.Sys.pushErrorHandler("abort")
+    try:
+        s = time.time()
+        solver.solve()
+        e = time.time()
+        PETSc.Sys.Print("TIMING", e-s)
+    except Exception as e:
+        PETSc.Sys.Print("There is a problem")
+        raise e
+    try:
+        print(solver.snes.ksp.getIterationNumber())
+        if solver.snes.ksp.getIterationNumber()!=1 and not approx_inner_schur:
+            raise Exception("In the solver options you specified that you want the local solvers to be exact enough,\
+                            but the outer solver turns out to need more than 1 iteration.\
+                            So you might want to put the tolerances lower on the local solver to make it more accurate.")
+    except:
+        PETSc.Sys.Print("Snes ksp has no its")
+        pass
+    
+    PETSc.Sys.Print("Solved succesfully.")
     return w, solver
 
 

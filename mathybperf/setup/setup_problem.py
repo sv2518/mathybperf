@@ -7,6 +7,7 @@ from mathybperf.verification.geometric import check_facetarea_and_cellvolume
 from firedrake import *
 import ufl
 from math import ceil
+from firedrake.petsc import PETSc
 
 
 def problem(problem_bag, solver_bag, verification, new=True, project=False):
@@ -27,10 +28,15 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
     # solve problem
     a, L, quadrature_degree = problem_bag.var_problem
     w, solver = solve_with_params(problem_bag, solver_bag)
-
+    pc = solver.snes.ksp.pc.getPythonContext() if solver.snes.ksp.pc.getType() == "python" else None
     # compare iterative solution to reference solution
-    w_t = solver.snes.ksp.pc.getPythonContext().trace_solution
-    problem_bag.total_local_shape = solver.snes.ksp.pc.getPythonContext().schur_builder.total_local_shape
+    if pc and hasattr(pc, "trace_solution"):
+        w_t = pc.trace_solution
+        problem_bag.total_local_shape = solver.snes.ksp.pc.getPythonContext().schur_builder.total_local_shape
+    else:
+        PETSc.Sys.Print("Can't access local shape.")
+        w_t = None
+        problem_bag.total_local_shape = "NAN"
     w_t_exact = None
     w2 = None
     if project:
@@ -48,7 +54,8 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
         w2 = Function(problem_bag.space[0])
         w2.sub(0).project(ufl.grad(exact_sol), solver_parameters={'ksp_rtol': 1.e-6, 'ksp_atol': 1.e-9}, form_compiler_parameters=fc1, use_slate_for_inverse=False)
         w2.sub(1).project(exact_sol, solver_parameters={'ksp_rtol': 1.e-6, 'ksp_atol': 1.e-9}, form_compiler_parameters=fc2, use_slate_for_inverse=False)
-        w_t_exact = project_trace_solution(w_t.function_space(), exact_sol, degree=fc2['quadrature_degree'])
+        if w_t:
+            w_t_exact = project_trace_solution(w_t.function_space(), exact_sol, degree=fc2['quadrature_degree'])
 
     # verification of error
     if verification:
