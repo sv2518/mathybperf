@@ -1070,6 +1070,38 @@ gtmg_fully_matfree_params_matexpmg_assembledjacobi_fs0_cg_jacobi_fgmres = {'snes
                                                                                              'ksp_view': None,
                                                                                              'ksp_monitor': None,
                                                                                              'ksp_converged_reason': None}}
+
+
+nonnested_gtmg_fully_matfree_params_matexpmg_assembledjacobi = {'snes_type': 'ksponly',
+                                                                'mat_type': 'matfree',
+                                                                'ksp_type': 'fgmres',
+                                                                'ksp_converged_reason': None,
+                                                                'ksp_rtol': 1.e-6,
+                                                                'ksp_atol': 1.e-6,
+                                                                'ksp_max_it': 2,
+                                                                'pc_type': 'python',
+                                                                           'pc_python_type': 'firedrake.HybridizationPC',
+                                                                           'hybridization': {'ksp_type': 'fgmres',
+                                                                                             'pc_type': 'python',
+                                                                                             'mat_type': 'matfree',
+                                                                                             'ksp_rtol': 1.e-6,
+                                                                                             'ksp_atol': 1.e-6,
+                                                                                             'localsolve': {'ksp_type': 'preonly',
+                                                                                                            'mat_type': 'matfree',  # local-matfree!
+                                                                                                            #    'pc_type': 'fieldsplit',
+                                                                                                            #    'pc_fieldsplit_type': 'schur',
+                                                                                                            'approx': False,
+                                                                                                            'fieldsplit_0': {'ksp_rtol': 1.e-8,
+                                                                                                                             'ksp_atol': 1.e-8},
+                                                                                                            'fieldsplit_1': {'ksp_atol': 1.e-8,
+                                                                                                                             'ksp_rtol': 1.e-8}},
+                                                                                             'pc_python_type': 'firedrake.GTMGPC',
+                                                                                             'gt': gt_params_fully_matfree_matexpmg_assembledjacobi,
+                                                                                             'ksp_view': None,
+                                                                                             'ksp_monitor': None,
+                                                                                             'ksp_converged_reason': None}}
+
+
 gtmg_fully_matfree_params_matexpmg_assembledjacobi_cg = {'snes_type': 'ksponly',
                                                          'mat_type': 'matfree',
                                                          'ksp_type': 'fgmres',
