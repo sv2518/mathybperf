@@ -1,0 +1,10 @@
+#!/bin/sh
+mkdir -p ./svgs/flames/mixed_poisson/pplus1pow3//case9a/trafo_none/
+cd svgs
+mkdir -p flames/mixed_poisson/pplus1pow3//case9a/trafo_none/order_3/cells_2/
+curl https://raw.githubusercontent.com/sv2518/mathybperf/main/mathybperf/performance/flames/mixed_poisson/pplus1pow3//case9a/trafo_none/order_3/cells_2/nonnested_gtmg_fully_matfree_params_matexpmg_assembledjacobi_cg_warm_up_flame.svg>flames/mixed_poisson/pplus1pow3//case9a/trafo_none/order_3/cells_2/nonnested_gtmg_fully_matfree_params_matexpmg_assembledjacobi_cg_warm_up_flame.svg
+curl https://raw.githubusercontent.com/sv2518/mathybperf/main/mathybperf/performance/flames/mixed_poisson/pplus1pow3//case9a/trafo_none/order_3/cells_2/nonnested_gtmg_fully_matfree_params_matexpmg_assembledjacobi_cg_warmed_up_flame.svg>flames/mixed_poisson/pplus1pow3//case9a/trafo_none/order_3/cells_2/nonnested_gtmg_fully_matfree_params_matexpmg_assembledjacobi_cg_warmed_up_flame.svg
+curl https://raw.githubusercontent.com/sv2518/mathybperf/main/mathybperf/performance/flames/mixed_poisson/pplus1pow3//case9a/trafo_none/order_3/cells_2/gtmg_global_matfree_params_matexpmg_assembledjacobi_cg_warm_up_flame.svg>flames/mixed_poisson/pplus1pow3//case9a/trafo_none/order_3/cells_2/gtmg_global_matfree_params_matexpmg_assembledjacobi_cg_warm_up_flame.svg
+curl https://raw.githubusercontent.com/sv2518/mathybperf/main/mathybperf/performance/flames/mixed_poisson/pplus1pow3//case9a/trafo_none/order_3/cells_2/gtmg_global_matfree_params_matexpmg_assembledjacobi_cg_warmed_up_flame.svg>flames/mixed_poisson/pplus1pow3//case9a/trafo_none/order_3/cells_2/gtmg_global_matfree_params_matexpmg_assembledjacobi_cg_warmed_up_flame.svg
+
+
