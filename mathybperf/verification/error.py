@@ -37,9 +37,7 @@ def get_error(w, w2):
 
 def check_var_problem(a, L, w):
     """Double-checks that the solution is solving the variational problem"""
-    A = Tensor(a)
-    B = AssembledVector(w)
-    sol = assemble(A*B)
+    sol = assemble(action(a, w))
     rhs = assemble(L)
     dat1 = sol.dat.data
     dat2 = rhs.dat.data

@@ -10,15 +10,15 @@ def solve_with_params(problem_bag, solver_bag):
 
     local_matfree = False
     fcp = None
-    approx_inner_schur=False
+    approx_inner_schur=True
     if ("hybridization" in solver_bag.perform_params.keys() 
         and "localsolve" in solver_bag.perform_params["hybridization"].keys()):
         if (("mat_type" in solver_bag.perform_params["hybridization"]["localsolve"].keys()) and
             solver_bag.perform_params["hybridization"]["localsolve"]["mat_type"] == "matfree"):
             local_matfree = True
             fcp = {"slate_compiler": {"replace_mul": True}}
-        if solver_bag.perform_params["hybridization"]["localsolve"]["approx"]:
-            approx_inner_schur=True
+        if not solver_bag.perform_params["hybridization"]["localsolve"]["approx"]:
+            approx_inner_schur=False
 
     w = Function(W)
     vpb = LinearVariationalProblem(a, L, w)

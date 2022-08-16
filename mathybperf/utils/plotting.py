@@ -1,6 +1,8 @@
 from firedrake import *
 from mathybperf import *
 import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set(font_scale=1.5)
 
 
 def plot_mat(a):
@@ -17,76 +19,66 @@ def plot_mat(a):
 class ResultPlotter(object):
 
     def __init__(self):
-        self.color = ['tab:red', "tab:blue"]
+        self.color = sns.color_palette(n_colors=2)
+        self.plotting_args = {'linewidth': 2, 'markersize': 5}
+        self.title = 'RTCF %d, DG %d (=%dx%d DOFS)\n quad_degree=(%d, %d)'
 
-    def plot_its_vs_scaling_fororder(self, name, orders, dofs, scalings, results, params, its_type):
-        # only for one ksp it
-        results = results[0]
-
+    def plot_per_order(self, name, orders, dofs, defo, results, knds, params, quad_degree_list, its_type, xlabel):
+        # format the subplots
         len_x = int(len(orders)/2)
         len_y = len(orders) - int(len(orders)/2) - 1
-        fig, axlist = plt.subplots(len_x, len_y, figsize=(16, 8))
+        _, axlist = plt.subplots(len_x, len_y, figsize=(13, 8))
 
-        title = ""
-        for i, v in params.items():
-            title += "%s: %s \n" % (i, v)
-        fig.suptitle(title, fontsize=10)
+        # clean up the xlabels
+        defo = self.round(defo)
+        print(knds)
 
         c = 0
         for q in range(len_x):
             ax = axlist[q]
             for r in range(len_y):
-                ax[r].plot(scalings, results[c], '-x')
+                # sub-title
+                self.set_sub_title(ax[r], c, quad_degree_list, orders, dofs)
 
-                ax[r].set_title('RTCF %d, DG %d (=%dx%d DOFS)' % (orders[c]+1, orders[c], dofs[c], dofs[c]), fontsize=10)
-                ax[r].set_xlabel('cell scalings', fontsize=10)
-                self.set_ax_ylabel(ax, its_type)
+                # iteration counts
+                ax[r].plot(defo, self.pandas_to_list(results, c),
+                           "-D", color=self.color[0], **self.plotting_args)
+                ax[r].set_xlabel(xlabel)
+                self.set_ax_ylabel(ax[r], its_type)
 
-                c += 1
-
-        plt.subplots_adjust(hspace=0.5)
-        plt.subplots_adjust(wspace=1.5)
-
-        self.save_plot(name)
-
-    def plot_deformation_vs_its_fororder(self, name, orders, dofs, defo, results, knds, params, quad_degree_list, its_type):
-        len_x = int(len(orders)/2)
-        len_y = len(orders) - int(len(orders)/2) - 1
-        fig, axlist = plt.subplots(len_x, len_y, figsize=(16, 8))
-
-        title = ""
-        for i, v in params.items():
-            title += "%s: %s \n" % (i, v)
-        fig.suptitle(title, fontsize=10)
-
-        c = 0
-        for q in range(len_x):
-            ax = axlist[q]
-            for r in range(len_y):
-                ax[r].plot(defo, list(res[c] for res in results), '-x', color=self.color[0])
-
-                title = 'RTCF %d, DG %d (=%dx%d DOFS)\n, quad_degree=(%d, %d)'
-                ax[r].set_title(title % (orders[c]+1, orders[c], dofs[c], dofs[c],
-                                         quad_degree_list[c][0], quad_degree_list[c][1]), fontsize=10)
-                ax[r].set_xlabel('deformations', fontsize=10)
-
+                # condition numbers
                 ax2 = ax[r].twinx()
-                ax2.plot(defo, list(res[c] for res in knds), '-o', color=self.color[1])
-                ax2.set_ylabel('kondition numbers', color=self.color[1])
+                ax2.plot(defo, self.pandas_to_list(knds, c),
+                         '-o', color=self.color[1], **self.plotting_args)
+                ax2.set_ylabel('condition numbers', color=self.color[1])
 
                 c += 1
 
-        plt.subplots_adjust(hspace=0.5)
-        plt.subplots_adjust(wspace=1.5)
+        plt.tight_layout()
 
-        self.save_plot(name + ".png")
+        self.save_plot(name + "_" + its_type + ".pdf")
+
+    def set_sub_title(self, ax, c, quad_degree_list, orders, dofs):
+        degrees = self.pandas_to_list(quad_degree_list, 0, ",")
+        ax.set_title(self.title % (int(orders[c])+1, int(orders[c]),
+                                   float(dofs[c]), float(dofs[c]),
+                                   int(degrees[c]), int(degrees[c])))
 
     def set_ax_ylabel(self, ax, its_type):
         if its_type == "total":
-            ax[r].set_ylabel('total ksp iterations \n [outer_its* \n(fsp0_its+fsp1_its*fsp0_its)]', fontsize=10, color=self.color[0])
+            # outer_its*(fsp1_its+fsp1_its*fsp0_its)
+            ax.set_ylabel('total ksp iterations', color=self.color[0]) 
         else:
-            ax[r].set_ylabel('outer ksp iterations', fontsize=10, color=self.color[0])
+            ax.set_ylabel('outer ksp iterations', color=self.color[0])
         return ax
 
     def save_plot(self, name):
         plt.savefig(name)
+
+    def pandas_to_list(self, results, order, delim=","):
+        # Pandas saves data as string and really doesn't like arrays in cells
+        return list(int(float(list(res.strip('[').strip(']').split(delim))[order]))
+                    for res in results)
+
+    def round(self, defo):
+        return list(round(float(d), 1) for d in defo)

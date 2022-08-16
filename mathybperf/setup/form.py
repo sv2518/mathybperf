@@ -10,7 +10,7 @@ def mixed_poisson(W, add_to_quad_degree, exact):
 
     if all(degree == 0 for degree in add_to_quad_degree):
         int_domain = dx
-        quadrature_degree = None
+        quadrature_degree = est_degree_calculation(form)
     else:
         # estimate the quadrature degree
         # and give user the freedom to increase/decrease the estimated degree

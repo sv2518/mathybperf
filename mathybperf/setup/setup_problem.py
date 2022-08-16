@@ -34,7 +34,6 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
         w_t = pc.trace_solution
         problem_bag.total_local_shape = solver.snes.ksp.pc.getPythonContext().schur_builder.total_local_shape
     else:
-        PETSc.Sys.Print("Can't access local shape.")
         w_t = None
         problem_bag.total_local_shape = "NAN"
     w_t_exact = None
@@ -56,6 +55,19 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
         w2.sub(1).project(exact_sol, solver_parameters={'ksp_rtol': 1.e-6, 'ksp_atol': 1.e-9}, form_compiler_parameters=fc2, use_slate_for_inverse=False)
         if w_t:
             w_t_exact = project_trace_solution(w_t.function_space(), exact_sol, degree=fc2['quadrature_degree'])
+    elif verification:
+        parameters = {
+            "ksp_type": "gmres",
+            "ksp_gmres_restart": 100,
+            "ksp_rtol": 1e-8,
+            "pc_type": "ilu",
+            }
+        A = assemble(a)
+        naivesolver = LinearSolver(A, solver_parameters=parameters)
+
+        w2 = Function(problem_bag.space[0])
+        b = assemble(L)
+        naivesolver.solve(w2, b)
 
     # verification of error
     if verification:

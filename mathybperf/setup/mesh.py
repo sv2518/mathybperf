@@ -13,9 +13,11 @@ def mesh_3D(bag, hierarchy_nlevels=None):
         mesh = ExtrudedMesh(base, n)
     coords = mesh.coordinates.dat.data
 
+    c = [1, 0.75]
     if not bag.affine_trafo and bag.deformation:
-        mesh.coordinates.dat.data[2][1] += bag.deformation * mesh.coordinates.dat.data[2][1]
-        mesh.coordinates.dat.data[4][1] += bag.deformation * 0.25 * mesh.coordinates.dat.data[4][1]
+        for i in range(coords.shape[0]):
+            if coords[i][2] > 0:
+                mesh.coordinates.dat.data[i][2] *= bag.deformation * c[i]
     elif bag.affine_trafo and bag.deformation:
         for i in range(coords.shape[0]):
             if coords[i][2] > 0:
