@@ -11,8 +11,6 @@ class DGLaplacian(AuxiliaryOperatorPC):
         q = ctx["quadrature_degree"]
 
         def gamma(p, h, d, value):
-            # Note approximation defree and deformation of the mesh
-            # are currently not used in the DG penalty parameter
             return Constant(value)/h
 
         W = u.function_space()

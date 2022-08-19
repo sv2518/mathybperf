@@ -55,7 +55,7 @@ class TimeData(object):
 class SizeData(object):
     def __init__(self, solution):
         self.solution = solution
-        self.split_solution = solution.split()
+        self.split_solution = solution.split() if self.solution else None
 
     def get_split_data(self):
         u_dofs, p_dofs = (sol.dof_dset.layout_vec.getSize()
@@ -65,5 +65,5 @@ class SizeData(object):
                 "sum dofs": u_dofs + p_dofs}
 
     def get_data(self):
-        dofs = self.solution.dof_dset.layout_vec.getSize()
+        dofs = self.solution.dof_dset.layout_vec.getSize() if self.solution else "NAN"
         return {"trace dofs (part of velo dofs)": dofs}
