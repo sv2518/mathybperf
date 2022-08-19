@@ -61,16 +61,16 @@ def local_operator_plot_and_print_info(a, name, bcs=None, disable_warning=False)
     from firedrake import assemble
     A = assemble(a, mat_type="aij", form_compiler_parameters={"slate_compiler":{"optimise": False, 
                                                               "replace_mul": False}}, bcs=bcs).M.handle
-    print(name)
+    PETSc.Sys.Print(name + " ---")
     A_np = petsctopy(A)
-    print("condition number:", np.linalg.cond(A_np))
-    print("positive semi definite?:", np.all(np.linalg.eigvals(A_np) >= 0))
-    print("neg semi definite?:", np.all(np.linalg.eigvals(A_np) <= 0))
-    print("eigenvalues bounded?:", np.all(np.linalg.eigvals(A_np)<= np.inf) and np.all(np.linalg.eigvals(A_np)>= -np.inf))
-    print("symmetric?:", np.allclose(A_np, A_np.T, rtol=0.0001,  atol=1e-8))
-    print("Hermitian?:", np.allclose(A_np, A_np.conj().T, rtol=0.0001))
-    print("min, max values:", np.min(A_np), np.max(A_np))
-    print("singular?:", np.allclose(np.linalg.slogdet(A_np)[0], 0, rtol=1e-12))
+    PETSc.Sys.Print("condition number:", np.linalg.cond(A_np))
+    PETSc.Sys.Print("positive semi definite?:", np.all(np.linalg.eigvals(A_np) >= 0))
+    PETSc.Sys.Print("neg semi definite?:", np.all(np.linalg.eigvals(A_np) <= 0))
+    PETSc.Sys.Print("eigenvalues bounded?:", np.all(np.linalg.eigvals(A_np)<= np.inf) and np.all(np.linalg.eigvals(A_np)>= -np.inf))
+    PETSc.Sys.Print("symmetric?:", np.allclose(A_np, A_np.T, rtol=0.0001,  atol=1e-8))
+    PETSc.Sys.Print("Hermitian?:", np.allclose(A_np, A_np.conj().T, rtol=0.0001))
+    PETSc.Sys.Print("min, max values:", np.min(A_np), np.max(A_np))
+    PETSc.Sys.Print("singular?:", np.allclose(np.linalg.slogdet(A_np)[0], 0, rtol=1e-12))
 
     def dd(A_np):
         n = len(A_np[0])
@@ -83,13 +83,12 @@ def local_operator_plot_and_print_info(a, name, bcs=None, disable_warning=False)
                     off_diag[i] += abs(A_np[i][j])
         return np.all(diag>=off_diag)
 
-    print("diagonal dominant?:", dd(A_np))
-    print("\n")
+    PETSc.Sys.Print("diagonal dominant?:", dd(A_np))
+    PETSc.Sys.Print("\n")
     
     import matplotlib.pyplot as plt
     plt.figure()
-    plt.imshow(A_np, cmap='RdBu', vmin=0, vmax=0.0000001)
-    plt.colorbar()
+    plt.imshow(A_np, cmap='RdBu', vmin=-1e-12, vmax=1e-12)
     plt.savefig("./plots/"+name)
 
 
@@ -226,38 +225,40 @@ def show_numerics(extruded, N, p, quadri, penalty):
     outer_S = J - (K_Ainv_block3[0] * KT0 + K_Ainv_block3[1] * KT1)
 
     if N > 1:
-        print("\n ------ Show global numerics ------\n")
-        local_operator_plot_and_print_info(_A, "A", disable_warning=True)
-        print("Takeaway: hybridised Poisson operator is singular and not symmetric")
-        local_operator_plot_and_print_info(outer_S, "outer S", disable_warning=True)
-        print("Takeaway: outer Schur complement is singular but spd")
-        local_operator_plot_and_print_info(A[0:2, 0:2], "global A0202", disable_warning=True)
-        print("Takeaway: A_01,01 block is not singular and but spd")
+        PETSc.Sys.Print("\n ------ Show global numerics ------\n")
+        local_operator_plot_and_print_info(_A, "Hybridised mixed Poisson A", disable_warning=True)
+        PETSc.Sys.Print("Takeaway: hybridised Poisson operator is indefinite\n")
+        local_operator_plot_and_print_info(outer_S, "outer Schur complement", bcs, disable_warning=True)
+        PETSc.Sys.Print("Takeaway: outer Schur complement is spd\n")
+        local_operator_plot_and_print_info(A[0:2, 0:2], "A_01,01", disable_warning=True)
+        PETSc.Sys.Print("Takeaway: A_01,01 block is spd\n")
     else:
-        print("\n ------ Show local numerics ------\n")
-        local_operator_plot_and_print_info(A00, "A00", disable_warning=True)
-        print("Takeaway: velocity mass matrix block (without traces) is spd")
-        local_operator_plot_and_print_info(A11, "A11", disable_warning=True)
-        print("Takeaway:pressure mass block (without traces) is singular (it's a zero block)")
-        local_operator_plot_and_print_info(J, "A22", disable_warning=True)
-        print("trace mass block (without traces) is singular (it's a zero block)")
-        local_operator_plot_and_print_info(A00_inv, "A00inv", disable_warning=True)
-        print("inverse of velocity mass matrix does not seem to be dense")
-        local_operator_plot_and_print_info(prec_A*A00, "preconditioned A00", disable_warning=True)
-        print("preconditioner of the velocity mass matrix lowers the precondition number")
-        local_operator_plot_and_print_info(inner_S, "inner S", disable_warning=True)
-        print("inner Schur complement is spd")
+        PETSc.Sys.Print("\n ------ Show local numerics ------\n")
+        local_operator_plot_and_print_info(A00, "velocity mass", disable_warning=True)
+        PETSc.Sys.Print("Takeaway: velocity mass matrix block (without traces) is spd\n")
+        local_operator_plot_and_print_info(A11, "pressure mass", disable_warning=True)
+        PETSc.Sys.Print("Takeaway: pressure mass block (without traces) is singular (it's a zero block)\n")
+        local_operator_plot_and_print_info(J, "trace mass", disable_warning=True)
+        PETSc.Sys.Print("Takeaway: trace mass block (without traces) is singular (it's a zero block)\n")
+        local_operator_plot_and_print_info(A00_inv, "inverse of velocity mass", disable_warning=True)
+        PETSc.Sys.Print("Takeaway: inverse of velocity mass matrix does not seem to be dense\n")
+        local_operator_plot_and_print_info(prec_A*A00, "preconditioned velocity mass", disable_warning=True)
+        PETSc.Sys.Print("Takeaway: preconditioner of the velocity mass matrix lowers the precondition number\n")
+        local_operator_plot_and_print_info(inner_S, "inner Schur commplement", disable_warning=True)
+        PETSc.Sys.Print("Takeaway: inner Schur complement is spd\n")
         if extruded:
             local_operator_plot_and_print_info(prec_S*prec_inner_S, "preconditioned inner S", disable_warning=True)
-            print("preconditioner of the inner schur complement lowers the precondition number not by much")
+            PETSc.Sys.Print("""Takeaway: preconditioner of the inner schur complement lowers
+                  the precondition number not by much and only for high order\n""")
 
 
 #############
 plt.style.use("seaborn-darkgrid")
+plt.rcParams.update({'font.size': 24})
 
 extruded_to_3D = True
 N_list = [3, 1]  # local vs global numerics
-p_list = [4]
+p_list = [2]
 quadri_list = [True]
 penalty = lambda p: (p+1)**3
 
