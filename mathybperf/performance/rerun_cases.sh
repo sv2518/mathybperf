@@ -1,21 +1,19 @@
 #!/bin/sh
+
+C='case0'
+sh ./run_profiler.sh $C 0
+
 C='case1'
-sh ./run_profiler.sh $C 0 --tex
+sh ./run_profiler.sh $C 0
 
-C='case2'
-sh ./run_profiler.sh $C 0 --tex
+C='case8'
+sh ./run_profiler.sh $C 0
 
-C='case2d'
-sh ./run_profiler.sh $C 0 --tex
+C='case4e'
+sh ./run_profiler.sh $C 0
 
-C='case2i'
-sh ./run_profiler.sh $C 0 --tex
+C='case5'
+sh ./run_profiler.sh $C 0
 
-C='case2j'
-sh ./run_profiler.sh $C 0 --tex
-
-C='case3'
-sh ./run_profiler.sh $C 0 --tex
-
-C='case4'
-sh ./run_profiler.sh $C 0 --tex
+C='case6'
+sh ./run_profiler.sh $C 0
