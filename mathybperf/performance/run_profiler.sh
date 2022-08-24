@@ -139,6 +139,12 @@ then
                             FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
                         fi
                         python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" $PROJECTEXACTSOL $VERIFICATION > $NNAME"_log.txt"
+                        # run for counting flops seperate in order to not screw up the performance
+                        # export PYOP2_COMPUTE_KERNEL_FLOPS=0
+                        # export PYOP2_DUMP_SLATE_FLOPS=$NNAME'_slate_flops.txt'
+                        # python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE --add_to_quad_degree "${ATQD[@]}" $PROJECTEXACTSOL $VERIFICATION -log_view :$NNAME'_full_flops.txt'
+                        # export PYOP2_COMPUTE_KERNEL_FLOPS=0
+                        # export PYOP2_DUMP_SLATE_FLOPS=""
                     
                         if $FLAME
                         then
@@ -180,6 +186,10 @@ then
                         FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
                     fi
                     echo  $NNAME"_log.txt"
+                    if ! [ "$VERIFICATION" == "--verification" ]
+                    then
+                        firedrake-clean
+                    fi
                     python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --clean $PROJECTEXACTSOL $VERIFICATION > $NNAME"_log.txt"
                     retcode=$?
 
@@ -211,6 +221,12 @@ then
                             FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
                         fi
                         python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" $PROJECTEXACTSOL > $NNAME"_log.txt"
+                        # run for counting flops seperate in order to not screw up the performance
+                        # export PYOP2_COMPUTE_KERNEL_FLOPS=0
+                        # export PYOP2_DUMP_SLATE_FLOPS=$NNAME'_slate_flops.txt'
+                        # python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE --add_to_quad_degree "${ATQD[@]}" $PROJECTEXACTSOL $VERIFICATION -log_view :$NNAME'_flops.txt'
+                        # export PYOP2_COMPUTE_KERNEL_FLOPS=0
+                        # export PYOP2_DUMP_SLATE_FLOPS=""
 
                         if $FLAME
                         then
