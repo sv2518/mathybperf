@@ -1103,6 +1103,76 @@ nonnested_gtmg_fully_matfree_params_matexpmg_assembledjacobi = {'snes_type': 'ks
                                                                                              'ksp_monitor': None,
                                                                                              'ksp_converged_reason': None}}
 
+nonnested_gtmg_fully_matfree_params_matexpmg_assembledjacobi_cg = {'snes_type': 'ksponly',
+                                                                   'mat_type': 'matfree',
+                                                                   'ksp_type': 'fgmres',
+                                                                   'ksp_converged_reason': None,
+                                                                   'ksp_rtol': 1.e-6,
+                                                                   'ksp_atol': 1.e-6,
+                                                                   'ksp_max_it': 2,
+                                                                   'pc_type': 'python',
+                                                                   'pc_python_type': 'firedrake.HybridizationPC',
+                                                                   'hybridization': {'ksp_type': 'cg',
+                                                                                     'pc_type': 'python',
+                                                                                     'mat_type': 'matfree',
+                                                                                     'ksp_rtol': 1.e-6,
+                                                                                     'ksp_atol': 1.e-6,
+                                                                                     'localsolve': {'ksp_type': 'preonly',
+                                                                                                    'mat_type': 'matfree',  # local-matfree!
+                                                                                                    #    'pc_type': 'fieldsplit',
+                                                                                                    #    'pc_fieldsplit_type': 'schur',
+                                                                                                    'approx': False,
+                                                                                                    'fieldsplit_0': {'ksp_rtol': 1.e-8,
+                                                                                                                     'ksp_atol': 1.e-8},
+                                                                                                    'fieldsplit_1': {'ksp_atol': 1.e-8,
+                                                                                                                     'ksp_rtol': 1.e-8}},
+                                                                                     'pc_python_type': 'firedrake.GTMGPC',
+                                                                                     'gt': gt_params_fully_matfree_matexpmg_assembledjacobi,
+                                                                                     'ksp_view': None,
+                                                                                     'ksp_monitor': None,
+                                                                                     'ksp_converged_reason': None}}
+
+
+class RieszMap(AuxiliaryOperatorPC):
+    def form(self, pc, s, t):
+        from ufl.split_functions import split
+        sigma, u = split(s)
+        tau, v = split(t)
+        a = (dot(sigma, tau) + div(sigma)*div(tau) + u*v)*dx
+        return (a, [])
+
+
+nonnested_gtmg_fully_matfree_params_matexpmg_assembledjacobi_riesz = {'snes_type': 'ksponly',
+                                                                      'mat_type': 'matfree',
+                                                                      'ksp_type': 'fgmres',
+                                                                      'ksp_converged_reason': None,
+                                                                      'ksp_rtol': 1.e-6,
+                                                                      'ksp_atol': 1.e-6,
+                                                                      'ksp_max_it': 2,
+                                                                      'pc_type': 'python',
+                                                                      'pc_python_type': 'firedrake.HybridizationPC',
+                                                                      'hybridization': {'ksp_type': 'fgmres',
+                                                                                        'pc_type': 'python',
+                                                                                        'mat_type': 'matfree',
+                                                                                        'ksp_rtol': 1.e-6,
+                                                                                        'ksp_atol': 1.e-6,
+                                                                                        'localsolve': {'mat_type': 'matfree',  # local-matfree!
+                                                                                                       #    'pc_type': 'fieldsplit',
+                                                                                                       #    'pc_fieldsplit_type': 'schur',
+                                                                                                       'approx': False,
+                                                                                                       'fieldsplit_0': {'ksp_type': 'default',
+                                                                                                                        'pc_type': 'python',
+                                                                                                                        'pc_python_type': __name__ + '.RieszMap',
+                                                                                                                        'aux_ksp_type': 'preonly',
+                                                                                                                        'aux_pc_type': 'jacobi',
+                                                                                                                        'ksp_rtol': 1.e-8,
+                                                                                                                        'ksp_atol': 1.e-8}},
+                                                                                        'pc_python_type': 'firedrake.GTMGPC',
+                                                                                        'gt': gt_params_fully_matfree_matexpmg_assembledjacobi,
+                                                                                        'ksp_view': None,
+                                                                                        'ksp_monitor': None,
+                                                                                        'ksp_converged_reason': None}
+                                                                      }
 
 gtmg_fully_matfree_params_matexpmg_assembledjacobi_cg = {'snes_type': 'ksponly',
                                                          'mat_type': 'matfree',
@@ -1327,9 +1397,11 @@ gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_jacobi = {'snes_type': 'ksponly',
 gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres = {'snes_type': 'ksponly',
                                                                           'mat_type': 'matfree',
                                                                           'ksp_type': 'fgmres',
-                                                                          'ksp_converged_reason': None,
-                                                                          'ksp_rtol': 1.e-6,
-                                                                          'ksp_atol': 1.e-6,
+                                                                          #     'ksp_converged_reason': None,
+                                                                          'ksp_view': None,
+                                                                          'ksp_monitor': None,
+                                                                          'ksp_rtol': 1.e-5,
+                                                                          'ksp_atol': 1.e-5,
                                                                           'ksp_max_it': 2,
                                                                           'pc_type': 'python',
                                                                           'pc_python_type': 'firedrake.HybridizationPC',
@@ -1338,6 +1410,7 @@ gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres = {'snes_
                                                                                             'mat_type': 'matfree',
                                                                                             'ksp_rtol': 1.e-6,
                                                                                             'ksp_atol': 1.e-6,
+                                                                                            'ksp_max_it': 200,
                                                                                             'localsolve': {'ksp_type': 'preonly',
                                                                                                            'mat_type': 'matfree',  # local-matfree!
                                                                                                            'pc_type': 'fieldsplit',
@@ -1345,19 +1418,17 @@ gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres = {'snes_
                                                                                                            'approx': False,
                                                                                                            'fieldsplit_0': {'ksp_type': 'default',
                                                                                                                             'pc_type': 'jacobi',
-                                                                                                                            'ksp_rtol': 1.e-8,
-                                                                                                                            'ksp_atol': 1.e-8},
+                                                                                                                            'ksp_rtol': 1.e-12,
+                                                                                                                            'ksp_atol': 1.e-70},
                                                                                                            'fieldsplit_1': {'ksp_type': 'default',
                                                                                                                             'pc_type': 'python',
                                                                                                                             'pc_python_type': __name__ + '.DGLaplacian3D',
                                                                                                                             'aux_ksp_type': 'preonly',
                                                                                                                             'aux_pc_type': 'jacobi',
-                                                                                                                            'ksp_atol': 1.e-7,
-                                                                                                                            'ksp_rtol': 1.e-7}},
+                                                                                                                            'ksp_atol': 1.e-70,
+                                                                                                                            'ksp_rtol': 1.e-8}},
                                                                                             'pc_python_type': 'firedrake.GTMGPC',
-                                                                                            'gt': gt_params_fully_matfree_matexpmg_assembledjacobi,
-                                                                                            'ksp_view': None,
-                                                                                            'ksp_monitor': None}}
+                                                                                            'gt': gt_params_fully_matfree_matexpmg_assembledjacobi}}
 
 gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres_outerfgmres = {'snes_type': 'ksponly',
                                                                                       'mat_type': 'matfree',
@@ -1380,7 +1451,7 @@ gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres_outerfgmr
                                                                                                                        'approx': True,
                                                                                                                        'fieldsplit_0': {'ksp_type': 'default',
                                                                                                                                         'pc_type': 'jacobi',
-                                                                                                                                        'ksp_rtol': 1.e-25,
+                                                                                                                                        'ksp_rtol': 1.e-10,
                                                                                                                                         'ksp_atol': 1.e-50},
                                                                                                                        'fieldsplit_1': {'ksp_type': 'default',
                                                                                                                                         'pc_type': 'python',
@@ -1388,7 +1459,7 @@ gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres_outerfgmr
                                                                                                                                         'aux_ksp_type': 'preonly',
                                                                                                                                         'aux_pc_type': 'jacobi',
                                                                                                                                         'ksp_atol': 1.e-50,
-                                                                                                                                        'ksp_rtol': 1.e-25}},
+                                                                                                                                        'ksp_rtol': 1.e-8}},
                                                                                                         'ksp_monitor': None}}
 
 gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres_outerfgmres_lessits = {'snes_type': 'ksponly',
@@ -1422,7 +1493,6 @@ gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres_outerfgmr
                                                                                                                                                 'ksp_atol': 1.e-8,
                                                                                                                                                 'ksp_rtol': 1.e-8}},
                                                                                                                 'ksp_monitor': None}}
-
 
 
 gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres_outerfgmres_withgtmg = {'snes_type': 'ksponly',
@@ -1503,12 +1573,10 @@ gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres_outerfgmr
                                                                                                                'ksp_monitor': None,
                                                                                                                'ksp_view': None,
                                                                                                                'pc_python_type': 'firedrake.HybridizationPC',
-                                                                                                               'hybridization': {'ksp_type': 'cg',
+                                                                                                               'hybridization': {'ksp_type': 'fgmres',
                                                                                                                                  'mat_type': 'matfree',
-                                                                                                                                 'pc_type': 'python',
-                                                                                                                                 'pc_python_type': 'firedrake.AssembledPC',
-                                                                                                                                 'assembled_pc_type': 'jacobi',
-                                                                                                                                 'ksp_max_it': 1,
+                                                                                                                                 'pc_type': 'none',
+                                                                                                                                 #    'ksp_max_it': 1,
                                                                                                                                  'localsolve': {'ksp_type': 'preonly',
                                                                                                                                                 'mat_type': 'matfree',  # local-matfree!
                                                                                                                                                 'pc_type': 'fieldsplit',
@@ -1518,13 +1586,9 @@ gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres_outerfgmr
                                                                                                                                                                  'pc_type': 'jacobi',
                                                                                                                                                                  'ksp_rtol': 1.e-10,
                                                                                                                                                                  'ksp_atol': 1.e-10},
-                                                                                                                                                'fieldsplit_1': {'ksp_type': 'default',
-                                                                                                                                                                 'pc_type': 'python',
-                                                                                                                                                                 'pc_python_type': __name__ + '.DGLaplacian3D',
-                                                                                                                                                                 'aux_ksp_type': 'preonly',
-                                                                                                                                                                 'aux_pc_type': 'jacobi',
-                                                                                                                                                                 'ksp_atol': 1.e-8,
-                                                                                                                                                                 'ksp_rtol': 1.e-8}},
+                                                                                                                                                'fieldsplit_1': {
+                                                                                                                                                    'ksp_atol': 1.e-8,
+                                                                                                                                                    'ksp_rtol': 1.e-8}},
                                                                                                                                  'ksp_monitor': None}}
 
 # the last line in this parameter set is just to indicate that it is ok if the outermost solve is running for more than iteration
@@ -1558,11 +1622,10 @@ native_dg = {'ksp_type': 'gmres',
                               'mg_levels': {'ksp_type': 'chebyshev',
                                             'ksp_max_it': 3,
                                             'pc_type': 'bjacobi',
-                                            'sub_pc_type': 'sor'},
-                              'fieldsplit_1': {'ksp_type': 'preonly',
-                                               'pc_type': 'bjacobi',
-                                               'sub_pc_type': 'ilu'},
-                              },
+                                            'sub_pc_type': 'sor'}},
+             'fieldsplit_1': {'ksp_type': 'preonly',
+                              'pc_type': 'bjacobi',
+                              'sub_pc_type': 'ilu'},
              'hybridization': {'localsolve': {'approx': True}}}
 
 fgmres_jacobi = {'ksp_type': 'fgmres',
