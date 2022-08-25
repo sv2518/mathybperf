@@ -45,19 +45,20 @@ for case in cases:
                     cell_path = flames+case+'/'+trafo+order+'/'+cell+'/'
                     files = glob.glob(cell_path+'*.svg')
                     for file in files:
-                        a = file.split("_warm")[0]
-                        param = fr"{a}".split("/")[-1]
-                        if not param in time_data_per_param.keys():
-                            time_data_per_param.update({param: {}})
-                        with open(file, 'r') as txt_file:
-                            text = str(txt_file.read())
-                        finds = re.findall(re.compile("all \(.* us"), text)
-                        if finds:
-                            time = (finds[0]).split('(')[1][:-3].replace(',', '')
-                        else:
-                            time = 0
-                        if time:
-                            time_data_per_param[param][order] = int(time) / 1000000
+                        if 'warmed_up' in file:
+                            a = file.split("_warm")[0]
+                            param = fr"{a}".split("/")[-1]
+                            if not param in time_data_per_param.keys():
+                                time_data_per_param.update({param: {}})
+                            with open(file, 'r') as txt_file:
+                                text = str(txt_file.read())
+                            finds = re.findall(re.compile("all \(.* us"), text)
+                            if finds:
+                                time = (finds[0]).split('(')[1][:-3].replace(',', '')
+                            else:
+                                time = 0
+                            if time:
+                                time_data_per_param[param][order] = int(time) / 1000000
         if not rows or len(index_names)>len(rows):
             rows = index_names
         for (key_t, value_t) in time_data_per_param.items():
