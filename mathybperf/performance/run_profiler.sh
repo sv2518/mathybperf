@@ -121,7 +121,7 @@ then
                         git add $FLAMENAME*"_flame.svg"
                         git add -f $FLAMENAME*"_flame.txt"
                         git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
-                        git push origin $CURRENT_BRANCH
+                        # git push origin $CURRENT_BRANCH
                         # Generate data for links
                         long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
                         encode_long_url=$(urlencode $long_url)
@@ -154,7 +154,7 @@ then
                         git add $FLAMENAME*"_flame.svg"
                         git add -f $FLAMENAME*"_flame.txt"
                         git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
-                        git push origin $CURRENT_BRANCH
+                        # git push origin $CURRENT_BRANCH
                         # Generate data for links
                         long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
                         encode_long_url=$(urlencode $long_url)
@@ -203,7 +203,7 @@ then
                         git add $FLAMENAME*"_flame.svg"
                         git add -f $FLAMENAME*"_flame.txt"
                         git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
-                        git push origin $CURRENT_BRANCH
+                        # git push origin $CURRENT_BRANCH
                         # Generate data for links
                         long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
                         encode_long_url=$(urlencode $long_url)
@@ -236,7 +236,7 @@ then
                         git add $FLAMENAME*"_flame.svg"
                         git add -f $FLAMENAME*"_flame.txt"
                         git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
-                        git push origin $CURRENT_BRANCH
+                        # git push origin $CURRENT_BRANCH
                         # Generate data for links
                         long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
                         encode_long_url=$(urlencode $long_url)
@@ -269,7 +269,7 @@ then
     git add $FLAMEBASENAME"curlthesvgs.sh"
     git commit -m "New script to fetch flamegraphs was generated."
     CURRENT_BRANCH=$(git branch --show-current)
-    git push origin $CURRENT_BRANCH
+    # git push origin $CURRENT_BRANCH
 fi
 
 if $DOTEX
