@@ -7,11 +7,12 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # collect json in all directories in home
-home = '/Users/sv2518/firedrakeexamples/mathybperf/mathybperf/performance/results/mixed_poisson/pplus1pow3/'
-flames = '/Users/sv2518/firedrakeexamples/mathybperf/mathybperf/performance/flames/mixed_poisson/pplus1pow3/'
+plots = '/data/sv2518/mathybperf/mathybperf/performance/plots/'
+home = '/data/sv2518/mathybperf/mathybperf/performance/results/mixed_poisson/pplus1pow3/'
+flames = '/data/sv2518/mathybperf/mathybperf/performance/flames/mixed_poisson/pplus1pow3/'
 trafo = 'trafo_none/'
 cases = os.listdir(home)
-plot_cases = ['case1','case2', 'case2d', 'case2i', 'case2j', 'case3', 'case4']
+plot_cases = ['case0', 'case8', 'case4e', 'case6']#, 'case6']
 time_data = {}
 its_data = {}
 rows = []
@@ -76,7 +77,7 @@ with open(table_filename, 'w') as convert_file:
     fig = plt.figure(figsize=(20, 7))
     sns.heatmap(pd.DataFrame(time_data, index=rows).sort_index().transpose().sort_index(), linewidth=1, square=True,
                 cbar_kws={"orientation": "vertical"}, cmap="Reds", robust=True, annot=True, fmt="4.0f")
-    plt.show()
+    plt.savefig(plots + 'table_time.pdf', format='pdf')
 table_filename = home + 'table_its.tex'
 with open(table_filename, 'w') as convert_file:
     frame = pd.DataFrame(its_data, index=rows).to_latex(index=True, index_names=rows)
@@ -84,5 +85,5 @@ with open(table_filename, 'w') as convert_file:
     fig = plt.figure(figsize=(20, 7))
     sns.heatmap(pd.DataFrame(its_data, index=rows).sort_index().transpose().sort_index(), linewidth=1, square=True,
                 cbar_kws={"orientation": "vertical"}, cmap="Blues", robust=True, annot=True)
-    plt.show()
+    plt.savefig(plots + 'table_its.pdf', format='pdf')
 
