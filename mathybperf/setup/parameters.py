@@ -488,8 +488,7 @@ gtmg_global_matfree_params = {'snes_type': 'ksponly',
                                                 'ksp_max_it': 1500,
                                                 'gt': gt_params_global_matfree},
                               'ksp_view': None,
-                                                'ksp_monitor': None,
-                                                'ksp_converged_reason': None}}
+                              'ksp_monitor': None}
 
 
 gtmg_global_matfree_params_maxitscg = {'snes_type': 'ksponly',
@@ -939,21 +938,20 @@ gtmg_global_matfree_params_matexpmg_assembledjacobi = {'snes_type': 'ksponly',
 gtmg_global_matfree_params_matexpmg_assembledjacobi_fgmres = {'snes_type': 'ksponly',
                                                               'mat_type': 'matfree',
                                                               'ksp_type': 'fgmres',
-                                                              'ksp_converged_reason': None,
-                                                              'ksp_rtol': 1.e-6,
-                                                              'ksp_atol': 1.e-6,
+                                                              'ksp_rtol': 1.e-5,
+                                                              'ksp_atol': 1.e-5,
                                                               'ksp_max_it': 2,
                                                               'pc_type': 'python',
                                                               'pc_python_type': 'firedrake.HybridizationPC',
-                                                              'hybridization': {'ksp_type': 'fgmres',
+                                                              'hybridization': {'ksp_type': 'cg',
                                                                                 'pc_type': 'python',
                                                                                 'mat_type': 'matfree',
                                                                                 'ksp_rtol': 1.e-6,
                                                                                 'ksp_atol': 1.e-6,
                                                                                 'pc_python_type': 'firedrake.GTMGPC',
-                                                                                'gt': gt_params_global_matfree_matexpmg_assembledjacobi,
-                                                                                'ksp_view': None,
-                                                                                'ksp_monitor': None}}
+                                                                                'gt': gt_params_global_matfree_matexpmg_assembledjacobi},
+                                                               'ksp_view': None,
+                                                               'ksp_monitor': None}
 
 gtmg_global_matfree_params_matexpmg_assembledjacobi_cg = {'snes_type': 'ksponly',
                                                           'mat_type': 'matfree',
