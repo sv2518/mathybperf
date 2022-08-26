@@ -950,8 +950,8 @@ gtmg_global_matfree_params_matexpmg_assembledjacobi_fgmres = {'snes_type': 'kspo
                                                                                 'ksp_atol': 1.e-6,
                                                                                 'pc_python_type': 'firedrake.GTMGPC',
                                                                                 'gt': gt_params_global_matfree_matexpmg_assembledjacobi},
-                                                               'ksp_view': None,
-                                                               'ksp_monitor': None}
+                                                              'ksp_view': None,
+                                                              'ksp_monitor': None}
 
 gtmg_global_matfree_params_matexpmg_assembledjacobi_cg = {'snes_type': 'ksponly',
                                                           'mat_type': 'matfree',
@@ -1087,10 +1087,9 @@ gtmg_fully_matfree_params_matexpmg_assembledjacobi_fs0_cg_jacobi_fgmres = {'snes
                                                                                                             'fieldsplit_1': {'ksp_atol': 1.e-8,
                                                                                                                              'ksp_rtol': 1.e-8}},
                                                                                              'pc_python_type': 'firedrake.GTMGPC',
-                                                                                             'gt': gt_params_fully_matfree_matexpmg_assembledjacobi,
-                                                                                             'ksp_view': None,
-                                                                                             'ksp_monitor': None,
-                                                                                             'ksp_converged_reason': None}}
+                                                                                             'gt': gt_params_fully_matfree_matexpmg_assembledjacobi},
+                                                                           'ksp_view': None,
+                                                                           'ksp_monitor': None}
 
 
 nonnested_gtmg_fully_matfree_params_matexpmg_assembledjacobi = {'snes_type': 'ksponly',
