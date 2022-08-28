@@ -73,20 +73,25 @@ if args.projectexactsol:
     tas_data.update(accuracy_data)
     data_to_tex.update(accuracy_data)
 
-# gather dofs for trace
-size_data = SizeData(w_t).get_data()
-tas_data.update(size_data)
-data_to_tex.update(size_data)
-
-# errors for trace
-if args.projectexactsol:
-    accuracy_data = get_error(w_t, w_t_exact)
-    tas_data.update(accuracy_data)
-    data_to_tex.update(accuracy_data)
-
-# get iterations
 pc = solver.snes.ksp.pc.getPythonContext() if solver.snes.ksp.pc.getType() == "python" else None
-its = {'outer_its': pc.trace_ksp.its} if pc and hasattr(pc, "trace_ksp") else {'outer_its': 0}
+if pc and hasattr(pc, "trace_ksp"):
+    # gather dofs for trace
+    size_data = SizeData(w_t).get_data()
+    tas_data.update(size_data)
+    data_to_tex.update(size_data)
+    
+    # errors for trace
+    if args.projectexactsol:
+        accuracy_data = get_error(w_t, w_t_exact)
+        tas_data.update(accuracy_data)
+        data_to_tex.update(accuracy_data)
+
+    # iterations for trace
+    its = {'trace_its': pc.trace_ksp.its}
+else:
+    its = {'trace_its': 0}
+
+its["outer_its"] = solver.snes.ksp.its
 
 if not args.verification:
     # write out data to .csv
