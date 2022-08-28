@@ -4,7 +4,7 @@ from firedrake import *
 def mesh_3D(bag, hierarchy_nlevels=None):
     n = bag.cells_per_dim
     s = bag.scaling
-    base = SquareMesh(n, n, s, quadrilateral=bag.quadrilateral)
+    base = SquareMesh(n, n, n, quadrilateral=bag.quadrilateral)
     if hierarchy_nlevels:
         basemh = MeshHierarchy(base, hierarchy_nlevels)
         mh = ExtrudedMeshHierarchy(basemh, n, base_layer=n)
