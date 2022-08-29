@@ -25,5 +25,6 @@ class SolverBag(object):
 
     def exact_solution(self, L, type="quadratic"):
         x = SpatialCoordinate(self.mesh)
-        base = x[0]*(L-x[0])*x[1]*(L-x[1])*x[2]*(L-x[2])
-        return base if type == "quadratic" else base * exp(L-x[0]+1) if type == "exponential" else None
+        return (x[0]*(L-x[0])+x[1]*(L-x[1])+x[2]*(L-x[2]) if type == "quadratic" else
+                x[0]*(L-x[0])*x[1]*(L-x[1])*x[2]*(L-x[2]) * exp(L-x[0]+1) if type == "exponential" else
+                x[0]*x[1]*x[2]*(1+12*pi*pi)*cos(100*pi*x[0])*cos(100*pi*x[1])*cos(100*pi*x[2]) if type == "trig" else None)
