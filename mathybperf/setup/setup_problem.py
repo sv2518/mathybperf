@@ -51,10 +51,16 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
             fc1 = {}
             fc2 = {}
         w2 = Function(problem_bag.space[0])
-        w2.sub(0).project(ufl.grad(exact_sol), solver_parameters={'ksp_rtol': 1.e-6, 'ksp_atol': 1.e-9}, form_compiler_parameters=fc1, use_slate_for_inverse=False)
-        w2.sub(1).project(exact_sol, solver_parameters={'ksp_rtol': 1.e-6, 'ksp_atol': 1.e-9}, form_compiler_parameters=fc2, use_slate_for_inverse=False)
+        w2.sub(0).project(ufl.grad(exact_sol), solver_parameters={'ksp_rtol': 1.e-9, 'ksp_atol': 1.e-9}, form_compiler_parameters=fc1, use_slate_for_inverse=False)
+        w2.sub(1).project(exact_sol, solver_parameters={'ksp_rtol': 1.e-9, 'ksp_atol': 1.e-9}, form_compiler_parameters=fc2, use_slate_for_inverse=False)
         if w_t:
-            w_t_exact = project_trace_solution(w_t.function_space(), exact_sol, degree=fc2['quadrature_degree'])
+            T = w_t.function_space()
+            w_t_exact = Function(T).project(exact_sol,
+                                            solver_parameters=solver_parameters={'ksp_rtol': 1.e-9, 'ksp_atol': 1.e-9},
+                                            form_compiler_parameters=fc2,
+                                            use_slate_for_inverse=False)
+
+
     elif verification:
         parameters = {
             "ksp_type": "gmres",
