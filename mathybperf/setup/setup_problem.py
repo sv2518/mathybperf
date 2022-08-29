@@ -56,7 +56,7 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
         if w_t:
             T = w_t.function_space()
             w_t_exact = Function(T).project(exact_sol,
-                                            solver_parameters=solver_parameters={'ksp_rtol': 1.e-9, 'ksp_atol': 1.e-9},
+                                            solver_parameters={'ksp_rtol': 1.e-9, 'ksp_atol': 1.e-9},
                                             form_compiler_parameters=fc2,
                                             use_slate_for_inverse=False)
 
