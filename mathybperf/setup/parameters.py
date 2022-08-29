@@ -1517,7 +1517,6 @@ gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres_outerfgmr
                                                                                                                 'ksp_monitor': None}}
 
 
-
 gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres_outerfgmres_withgtmg = {'snes_type': 'ksponly',
                                                                                                'mat_type': 'matfree',
                                                                                                'ksp_type': 'fgmres',
@@ -1556,9 +1555,9 @@ gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres_outerfgmr
                                                                                                  'mat_type': 'matfree',
                                                                                                  'ksp_type': 'fgmres',
                                                                                                  'ksp_converged_reason': None,
-                                                                                                 'ksp_rtol': 1.e-6,
+                                                                                                 'ksp_rtol': 1.e-5,
                                                                                                  'ksp_atol': 1e-70,
-                                                                                                 'ksp_max_it': 5000,
+                                                                                                 'ksp_max_it': 1000,
                                                                                                  'pc_type': 'python',
                                                                                                  'ksp_monitor': None,
                                                                                                  'ksp_view': None,
@@ -1566,6 +1565,8 @@ gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres_outerfgmr
                                                                                                  'hybridization': {'ksp_type': 'cg',
                                                                                                                    'mat_type': 'matfree',
                                                                                                                    'pc_type': 'none',
+                                                                                                                   'ksp_rtol': 1.e-6,
+                                                                                                                   'ksp_atol': 1e-70,
                                                                                                                    'ksp_max_it': 1,
                                                                                                                    'localsolve': {'ksp_type': 'preonly',
                                                                                                                                   'mat_type': 'matfree',  # local-matfree!
