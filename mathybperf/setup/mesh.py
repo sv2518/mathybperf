@@ -7,7 +7,7 @@ def mesh_3D(bag, hierarchy_nlevels=None):
     base = SquareMesh(n, n, s, quadrilateral=bag.quadrilateral)
     if hierarchy_nlevels:
         basemh = MeshHierarchy(base, hierarchy_nlevels)
-        mh = ExtrudedMeshHierarchy(basemh, n, base_layer=n)
+        mh = ExtrudedMeshHierarchy(basemh, s, base_layer=n)
         mesh = mh[-1]
     else:
         mesh = ExtrudedMesh(base, n)
