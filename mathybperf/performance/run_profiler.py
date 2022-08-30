@@ -82,7 +82,7 @@ if pc and hasattr(pc, "trace_ksp"):
     
     # errors for trace
     if args.projectexactsol:
-        accuracy_data = get_error(w_t, w_t_exact)
+        accuracy_data = get_error(w_t, w_t_exact, FacetArea(mesh), args.name+"error.pdf")
         tas_data.update(accuracy_data)
         data_to_tex.update(accuracy_data)
 

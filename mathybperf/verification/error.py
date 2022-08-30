@@ -1,19 +1,20 @@
 from firedrake import *
 import numpy as np
+import matplotlib.pyplot as plt
 
 
-def check_error(w, w2):
+def check_error(w, w2, threshold):
     """Checks the error of the solution w against the reference solution w2."""
     sigma, u = w.split()
     sigma2, u2 = w2.split()
     norm = errornorm(sigma, sigma2, norm_type="L2")
-    assert np.allclose(sigma.dat.data, sigma2.dat.data, rtol=1.e-4, atol=1.e-4), norm
+    assert norm < threshold or norm < 1e-5
     norm = errornorm(u, u2, norm_type="L2")
-    assert np.allclose(u.dat.data, u2.dat.data, rtol=1.e-4, atol=1.e-4), norm
+    assert norm < threshold or norm < 1e-5
 
 
 def get_errors(w, w2):
-    """Returns error in various norms."""
+    """Returns error of mixed function in various norms."""
     linf_err_u = max(abs(assemble(w.sub(0) - w2.sub(0)).dat.data))
     linf_err_p = max(abs(assemble(w.sub(1) - w2.sub(1)).dat.data))
     l2_err_u = errornorm(w.sub(0), w2.sub(0), "L2")
@@ -28,21 +29,29 @@ def get_errors(w, w2):
             "HDivVelo": hdiv_err_u}
 
 
-def get_error(w, w2):
-    linf_err_p = max(abs(assemble(w - w2).dat.data))
-    l2_err_p = np.sqrt(np.sum(np.abs(d1 - d2) for d1, d2 in zip(w.dat.data, w2.dat.data)))
-    return {"LinfTrace": linf_err_p,
-            "L2Trace": l2_err_p}
+def get_error(w, ref, area, filename):
+    """Returns error of not function of the trace."""
+    plt.figure()
+    plt.plot(w.dat.data, label="trace sol")
+    plt.plot(ref.dat.data, label="trace ref")
+    plt.legend()
+    plt.savefig(filename)
+    l2_err_p = sqrt(assemble(area* ( w -  ref) * ( w -   ref) * ds_v
+                            +area*  ( w -   ref) * ( w -   ref) * ds_t
+                            +area* ( w -   ref) * ( w -   ref) * ds_b
+                            +area* ( w('+') -   ref('+')) * ( w('+') -   ref('+')) * dS_h
+                            +area* ( w('+') -   ref('+')) * ( w('+') -   ref('+')) * dS_v))
+    return {"L2Trace": l2_err_p}
 
 
-def check_var_problem(a, L, w):
+def check_var_problem(a, L, w, threshold):
     """Double-checks that the solution is solving the variational problem"""
     sol = assemble(action(a, w))
     rhs = assemble(L)
-    dat1 = sol.dat.data
-    dat2 = rhs.dat.data
-    assert np.allclose(dat1[0], dat2[0], rtol=1.e-4, atol=1.e-4), "Velocity in solution does not solve the variational problem. The errornorm is "+str(errornorm(sol, rhs))
-    assert np.allclose(dat1[1], dat2[1], rtol=1.e-4, atol=1.e-4), "Pressure in solution does not solve the variational problem."
+    norm = errornorm(sol.sub(0), rhs.sub(0), norm_type="L2")
+    assert  norm < threshold or norm < 1e-5, "Velocity in solution does not solve the variational problem. The errornorm is "+str(norm)
+    norm = errornorm(sol.sub(1), rhs.sub(1), norm_type="L2") 
+    assert norm < threshold or norm < 1e-5, "Pressure in solution does not solve the variational problem. The errornorm is "+str(norm)
 
 
 def project_trace_solution(T, exact_sol, degree):
