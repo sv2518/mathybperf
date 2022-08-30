@@ -82,15 +82,15 @@ def problem(problem_bag, solver_bag, verification, new=True, project=False):
             check_facetarea_and_cellvolume(problem_bag.space[2])
 
         # plug iterative solution in the variational problem
-        check_var_problem(a, L, w)
+        check_var_problem(a, L, w, 1**(-problem_bag.order))
 
         # double check that the reference solution is solving the variational problem
         # (it always should, since we do MMS,
         # but choosing an exact solution that does not fulfill the BCs can screw things up
         # and choosing the quadrature degree too low, too.)
-        check_var_problem(a, L, w2)
+        check_var_problem(a, L, w2, 1**(-problem_bag.order))
 
         # compare iterative to reference solution
-        check_error(w, w2)
+        check_error(w, w2, 10**(-problem_bag.order))
 
     return quadrature_degree, (w, w2), (w_t, w_t_exact), solver_bag.mesh, solver
