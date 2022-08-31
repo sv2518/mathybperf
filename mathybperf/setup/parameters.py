@@ -332,10 +332,10 @@ hybridization_fully_matfree_cg = {'mat_type': 'matfree',
                                                                    'approx': False,
                                                                    'fieldsplit_0': {'ksp_rtol': 1.e-10,
                                                                                     'ksp_atol': 1e-70,
-                                                                                    'ksp_max_it': 1000},
+                                                                                    'ksp_max_it': 2000},
                                                                    'fieldsplit_1': {'ksp_atol': 1e-70,
                                                                                     'ksp_rtol': 1.e-8,
-                                                                                    'ksp_max_it': 1000}}},
+                                                                                    'ksp_max_it': 2000}}},
                                   'ksp_view': None,
                                   'ksp_monitor': None}
 
@@ -780,8 +780,7 @@ gtmg_fully_matfree_params_matexpmg_fgmres_assembledjacobi = {'snes_type': 'kspon
                                                                                'pc_python_type': 'firedrake.GTMGPC',
                                                                                'gt': gt_params_fully_matfree_matexpmg_assembledjacobi,
                                                                                'ksp_view': None,
-                                                                               'ksp_monitor': None,
-                                                                               'ksp_converged_reason': None}}
+                                                                               'ksp_monitor': None}}
 
 
 gtmg_global_matfree_params_lessitsonlevels = {'snes_type': 'ksponly',
