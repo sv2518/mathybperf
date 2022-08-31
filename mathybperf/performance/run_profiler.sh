@@ -108,7 +108,7 @@ then
                     then
                         FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
                     fi
-                    python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --clean  $PROJECTEXACTSOL $VERIFICATION > $NNAME"_log.txt"
+                    #python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" --clean  $PROJECTEXACTSOL $VERIFICATION > $NNAME"_log.txt"
                     retcode=$?
 
                     if ! [ "$VERIFICATION" == "--verification" ]
@@ -138,7 +138,7 @@ then
                         then
                             FLARG='-log_view :'$FNAME'_flame.txt:ascii_flamegraph'
                         fi
-                        python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" $PROJECTEXACTSOL $VERIFICATION > $NNAME"_log.txt"
+                        #python3 run_profiler.py $NNAME $PARAMS $P $LEVELS $QUADS $S $D $TRAFO $C $SOLTYPE $FLARG --add_to_quad_degree "${ATQD[@]}" $PROJECTEXACTSOL $VERIFICATION > $NNAME"_log.txt"
                         # run for counting flops seperate in order to not screw up the performance
                         # export PYOP2_COMPUTE_KERNEL_FLOPS=0
                         # export PYOP2_DUMP_SLATE_FLOPS=$NNAME'_slate_flops.txt'
