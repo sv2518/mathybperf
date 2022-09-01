@@ -40,15 +40,11 @@ def solve_with_params(problem_bag, solver_bag):
     except Exception as e:
         PETSc.Sys.Print("There is a problem")
         raise e
-    try:
-        print(solver.snes.ksp.getIterationNumber())
-        if solver.snes.ksp.getIterationNumber()!=1 and not approx_inner_schur:
-            raise Exception("In the solver options you specified that you want the local solvers to be exact enough,\
-                            but the outer solver turns out to need more than 1 iteration.\
-                            So you might want to put the tolerances lower on the local solver to make it more accurate.")
-    except:
-        PETSc.Sys.Print("Snes ksp has no its")
-        pass
+    
+    if solver.snes.ksp.its!=1 and not approx_inner_schur:
+        raise Exception("In the solver options you specified that you want the local solvers to be exact enough,\
+                        but the outer solver turns out to need more than 1 iteration.\
+                        So you might want to put the tolerances lower on the local solver to make it more accurate.")
     
     PETSc.Sys.Print("Solved succesfully.")
     return w, solver
