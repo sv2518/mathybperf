@@ -7,11 +7,11 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # collect json in all directories in home
-home = '/Users/sv2518/firedrakeexamples/mathybperf/mathybperf/performance/results/mixed_poisson/pplus1pow3/'
-flames = '/Users/sv2518/firedrakeexamples/mathybperf/mathybperf/performance/flames/mixed_poisson/pplus1pow3/'
+home = '/data/sv2518/mathybperf/mathybperf/performance/results/mixed_poisson/pplus1pow3/'
+flames = '/data/sv2518/mathybperf/mathybperf/performance/flames/mixed_poisson/pplus1pow3/'
 trafo = 'trafo_none/'
 cases = os.listdir(home)
-plot_cases = ['case0', 'case8', 'case4e', 'case6', 'case6c', 'case1', 'case2', 'case5', 'case10']
+plot_cases = ['case0', 'case8', 'case4e', 'case5']#, 'case6', 'case6c', 'case1', 'case2', 'case5', 'case10']
 time_data = {}
 its_data = {}
 rows = []
@@ -28,9 +28,10 @@ for case in cases:
             order_path = case_path+'/'+trafo+order+'/'
             if os.path.isdir(order_path):
                 index_names += [order]
-                cells = os.listdir(order_path)
+                cells = ['cells_2']
                 for cell in cells:
                     cell_path = order_path+cell+'/'
+                    print(cell_path)
                     files = glob.glob(cell_path+'*.json')
                     for file in files:
                         a = file.split("_warm")[0]
@@ -76,7 +77,7 @@ with open(table_filename, 'w') as convert_file:
     fig = plt.figure(figsize=(20, 7))
     sns.heatmap(pd.DataFrame(time_data, index=rows).sort_index().transpose().sort_index(), linewidth=1, square=True,
                 cbar_kws={"orientation": "vertical"}, cmap="Reds", robust=True, annot=True, fmt="4.0f")
-    plt.show()
+    plt.savefig('/data/sv2518/mathybperf/mathybperf/performance/plots/table_time.pdf')
 table_filename = home + 'table_its.tex'
 with open(table_filename, 'w') as convert_file:
     frame = pd.DataFrame(its_data, index=rows).to_latex(index=True, index_names=rows)
@@ -84,5 +85,4 @@ with open(table_filename, 'w') as convert_file:
     fig = plt.figure(figsize=(20, 7))
     sns.heatmap(pd.DataFrame(its_data, index=rows).sort_index().transpose().sort_index(), linewidth=1, square=True,
                 cbar_kws={"orientation": "vertical"}, cmap="Blues", robust=True, annot=True)
-    plt.show()
-
+    plt.savefig('/data/sv2518/mathybperf/mathybperf/performance/plots/table_its.pdf')
