@@ -760,11 +760,7 @@ gtmg_fully_matfree_params_matexpmg_fgmres_assembledjacobi = {'snes_type': 'kspon
                                                              'mat_type': 'matfree',
                                                              'ksp_type': 'fgmres',
                                                              'ksp_rtol': 1.e-9,
-<<<<<<< Updated upstream
                                                              'ksp_atol': 1e-90,
-=======
-                                                             'ksp_atol': 1e-70,
->>>>>>> Stashed changes
                                                              'ksp_max_it': 2,
                                                              'ksp_view': None,
                                                              'ksp_monitor': None,
