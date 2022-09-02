@@ -11,7 +11,7 @@ home = '/data/sv2518/mathybperf/mathybperf/performance/results/mixed_poisson/ppl
 flames = '/data/sv2518/mathybperf/mathybperf/performance/flames/mixed_poisson/pplus1pow3/'
 trafo = 'trafo_none/'
 cases = os.listdir(home)
-plot_cases = ['case0', 'case8', 'case4e', 'case5']#, 'case6', 'case6c', 'case1', 'case2', 'case5', 'case10']
+plot_cases = ['case0', 'case8', 'case4e']#, 'case6', 'case6c', 'case1', 'case2', 'case5', 'case10']
 time_data = {}
 its_data = {}
 rows = []
@@ -28,7 +28,7 @@ for case in cases:
             order_path = case_path+'/'+trafo+order+'/'
             if os.path.isdir(order_path):
                 index_names += [order]
-                cells = ['cells_2']
+                cells = ['cells_3']
                 for cell in cells:
                     cell_path = order_path+cell+'/'
                     print(cell_path)

@@ -10,7 +10,7 @@ C='case8'
 #sh ./run_profiler.sh $C 0
 
 C='case4e'
-#sh ./run_profiler.sh $C 0
+sh ./run_profiler.sh $C 0
 
 C='case5'
 sh ./run_profiler.sh $C 0
