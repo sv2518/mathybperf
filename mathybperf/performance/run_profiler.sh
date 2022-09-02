@@ -115,7 +115,8 @@ then
                     then
                         if $FLAME
                         then
-                        ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
+			    :
+                            #../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
                         fi
                         # Make new flamegraphs online accessible
                         git add $FLAMENAME*"_flame.svg"
@@ -148,7 +149,8 @@ then
                     
                         if $FLAME
                         then
-                        ../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
+			    :
+                            #../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
                         fi
                         # Make new flamegraphs online accessible
                         git add $FLAMENAME*"_flame.svg"
