@@ -1124,7 +1124,7 @@ nonnested_gtmg_fully_matfree_params_matexpmg_assembledjacobi = {'snes_type': 'ks
                                                                                                  #    'pc_type': 'fieldsplit',
                                                                                                  #    'pc_fieldsplit_type': 'schur',
                                                                                                  'approx': False,
-                                                                                                 'fieldsplit_0': {'ksp_rtol': 1.e-14
+                                                                                                 'fieldsplit_0': {'ksp_rtol': 1.e-14,
                                                                                                                   'ksp_atol': 1e-90},
                                                                                                  'fieldsplit_1': {'ksp_atol': 1e-90,
                                                                                                                   'ksp_rtol': 1.e-12}},
