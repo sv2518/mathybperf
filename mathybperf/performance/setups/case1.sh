@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # This run just compares how Jacks GTMG on the trace solve compare to lu on the trace solves
-export ORDERS=(0 1 2 3 4 5)
+export ORDERS=(4 5)
 export LEVELS=2
 export SCALING=(2)
 export DEFORM=(0)
@@ -13,5 +13,5 @@ export FLAME=true
 export BASEP='hybridization_lu_params'
 export PERFORMP='hybridization_global_matfree_cg'
 export SOLTYPE='exponential'
-export PROJECTEXACTSOL="" #--projectexactsol
+export PROJECTEXACTSOL=--projectexactsol
 export CASE='/case1/'

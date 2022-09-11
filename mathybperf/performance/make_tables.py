@@ -11,7 +11,8 @@ home = '/data/sv2518/mathybperf/mathybperf/performance/results/mixed_poisson/ppl
 flames = '/data/sv2518/mathybperf/mathybperf/performance/flames/mixed_poisson/pplus1pow3/'
 trafo = 'trafo_none/'
 cases = os.listdir(home)
-plot_cases = ['case0', 'case8', 'case4e']#, 'case6', 'case6c', 'case1', 'case2', 'case5', 'case10']
+plot_cases = ['case3', 'case0', 'case8', 'case4e', 'case6', 'case1', 'case2', 'case5', 'case11', 'case6c']
+cells = ['cells_4']
 time_data = {}
 its_data = {}
 rows = []
@@ -28,7 +29,6 @@ for case in cases:
             order_path = case_path+'/'+trafo+order+'/'
             if os.path.isdir(order_path):
                 index_names += [order]
-                cells = ['cells_3']
                 for cell in cells:
                     cell_path = order_path+cell+'/'
                     print(cell_path)
@@ -39,7 +39,7 @@ for case in cases:
                         if not param in its_data_per_param.keys():
                             its_data_per_param.update({param: {}})
                         with open(file) as json_file:
-                            its = json.load(json_file)['outer_its']
+                            its = json.load(json_file)['trace_its']
                             if its:
                                 its_data_per_param[param][order] = its
 
@@ -53,7 +53,7 @@ for case in cases:
                                 time_data_per_param.update({param: {}})
                             with open(file, 'r') as txt_file:
                                 text = str(txt_file.read())
-                            finds = re.findall(re.compile("all \(.* us"), text)
+                            finds = re.findall(re.compile("SNESSolve \(.* us"), text)
                             if finds:
                                 time = (finds[0]).split('(')[1][:-3].replace(',', '')
                             else:
@@ -77,7 +77,7 @@ with open(table_filename, 'w') as convert_file:
     fig = plt.figure(figsize=(20, 7))
     sns.heatmap(pd.DataFrame(time_data, index=rows).sort_index().transpose().sort_index(), linewidth=1, square=True,
                 cbar_kws={"orientation": "vertical"}, cmap="Reds", robust=True, annot=True, fmt="4.0f")
-    plt.savefig('/data/sv2518/mathybperf/mathybperf/performance/plots/table_time.pdf')
+    plt.savefig(f'/data/sv2518/mathybperf/mathybperf/performance/plots/table_time_{cells[0]}.pdf')
 table_filename = home + 'table_its.tex'
 with open(table_filename, 'w') as convert_file:
     frame = pd.DataFrame(its_data, index=rows).to_latex(index=True, index_names=rows)
@@ -85,4 +85,4 @@ with open(table_filename, 'w') as convert_file:
     fig = plt.figure(figsize=(20, 7))
     sns.heatmap(pd.DataFrame(its_data, index=rows).sort_index().transpose().sort_index(), linewidth=1, square=True,
                 cbar_kws={"orientation": "vertical"}, cmap="Blues", robust=True, annot=True)
-    plt.savefig('/data/sv2518/mathybperf/mathybperf/performance/plots/table_its.pdf')
+    plt.savefig(f'/data/sv2518/mathybperf/mathybperf/performance/plots/table_its_{cells[0]}.pdf')
