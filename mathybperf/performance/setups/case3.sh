@@ -2,7 +2,7 @@
 
 # This run just compares how Jacks GTMG on the trace solve compare
 # to the same setup just with a nesting of the Schur complelemts
-export ORDERS=(0 1 2 3 4 5)
+export ORDERS=(0 1 2 3 4)
 export LEVELS=2
 export SCALING=(2)
 export DEFORM=(0)
