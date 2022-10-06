@@ -119,9 +119,9 @@ then
                             #../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
                         fi
                         # Make new flamegraphs online accessible
-                        git add $FLAMENAME*"_flame.svg"
-                        git add -f $FLAMENAME*"_flame.txt"
-                        git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
+                        #git add $FLAMENAME*"_flame.svg"
+                        #git add -f $FLAMENAME*"_flame.txt"
+                        #git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
                         # git push origin $CURRENT_BRANCH
                         # Generate data for links
                         long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
@@ -153,9 +153,9 @@ then
                             #../../../FlameGraph/flamegraph.pl $FNAME"_flame.txt" > $FNAME"_flame.svg"  --inverted --title "Firedrake example" --countname us --fontsize 13 --colors "eyefriendly"
                         fi
                         # Make new flamegraphs online accessible
-                        git add $FLAMENAME*"_flame.svg"
-                        git add -f $FLAMENAME*"_flame.txt"
-                        git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
+                        #git add $FLAMENAME*"_flame.svg"
+                        #git add -f $FLAMENAME*"_flame.txt"
+                        #git commit -m "New flamegraphs were generated for parameter sets "$BASEP" and "$PERFORMP"."
                         # git push origin $CURRENT_BRANCH
                         # Generate data for links
                         long_url="https://www.speedscope.app/#profileURL="$WEBPAGE$FNAME"_flame.txt"
