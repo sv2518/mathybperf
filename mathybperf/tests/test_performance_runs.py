@@ -25,7 +25,6 @@ def setup_degrees(setups):
 base_path = './mathybperf/performance/verification/results/mixed_poisson/pplus1pow3/'
 # test all setups
 setups = setup_names()
-setups = setup_degrees(setups)
 # only test setups for thesis
 # case names are experiment names
 setups = ['case0',
@@ -35,6 +34,7 @@ setups = ['case0',
           'case4e',
           'case6',
           'case8']
+setups = setup_degrees(setups)
 
 def run_profiler(name, degree):
     proc = os.system("cd ./mathybperf/performance ; /bin/bash ./run_profiler.sh "+name+" "+str(degree)+" --verification")
