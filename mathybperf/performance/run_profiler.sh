@@ -46,6 +46,7 @@ then
     # Hence no flamegraphs will be generated.
     FLAME=false
     ORDERS=("$2")
+    CELLSPD=(4)
 fi
 
 
