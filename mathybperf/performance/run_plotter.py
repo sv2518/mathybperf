@@ -6,12 +6,15 @@ import pandas as pd
 import numpy as np
 import os
 import seaborn as sns
+import itertools
+import re
 
 from mathybperf.setup.setup_problem import problem
 sns.set_palette("deep")
 current_palette = sns.color_palette()
-tips =['o','v','s','P','*',"D","X",2]
-plt.rcParams.update({'font.size': 14})
+tips = ['o','v','s','P','*',"D","X",2, 1]
+markers = itertools.cycle(tips)
+plt.rcParams.update({'font.size': 20})
 
 #order is not order it is the nth specification of dof numbers
 def solveassembly_internal(columns,axis10,axis11,jp1,dof,order,case):
@@ -57,7 +60,7 @@ def solveassembly_internal(columns,axis10,axis11,jp1,dof,order,case):
     axis9.set_xlabel('Parts')
     axis9.set_xticklabels([' ','Pred',' ','Upd',' ','Corr'])
     axis9.set_ylabel('Normalised Time')
-    fig9.savefig('solveassembly_internal/'+case+'/tasparts_relative_internal_order%d_dof%d.pdf'%(order,dof), dpi=150)
+    fig9.savefig('solveassembly_internal/'+case+'/tasparts_relative_internal_order%d_dof%d.pdf'%(order,dof))
 
     #absolute plot for parts
     fig99= plt.figure(99)
@@ -85,7 +88,7 @@ def solveassembly_internal(columns,axis10,axis11,jp1,dof,order,case):
     axis99.set_xlabel('Parts')
     axis99.set_xticklabels([' ','Pred',' ','Upd',' ','Corr'])
     axis99.set_ylabel('Time [s]')
-    fig99.savefig('solveassembly_internal/'+case+'/tasparts_absolute_internal_order%d_dof%d.pdf'%(order,dof), dpi=150)
+    fig99.savefig('solveassembly_internal/'+case+'/tasparts_absolute_internal_order%d_dof%d.pdf'%(order,dof))
 
     ##########################################################
 
@@ -106,35 +109,40 @@ def solveassembly_internal(columns,axis10,axis11,jp1,dof,order,case):
 
     return a18,a19,a20,a21,time
 
-def tas_spectrum(plot_dir, orders, error_list, dof_group_list,timeoverall_list,sol):
+def tas_spectrum(plot_dir, orders, error_list, dof_group_list, timeoverall_list, sol, overlay=False, labels=[], per_order=True, case_counter=None):
 
-    plt.close(4)
-    plt.close(5)
-    plt.close(6)
-    plt.close(8)
     ####################################################################
     ############# MESH CONVERGENCE #####################################
     ####################################################################
+    markers = itertools.cycle(tips)
 
     doa=[-np.log10(error) for error in error_list]#digits of accuracy
-    dos=[np.log10(np.sqrt(dof)) for dof in dof_group_list]#digits of size
+    dos=[np.log10(dof) for dof in dof_group_list]#digits of size
 
-    fig4= plt.figure(4)
+    fig4= plt.figure(4, figsize=(5.33,4))
     axis4 = fig4.gca()
     axis4.set_ylabel('DoA')
     axis4.set_xlabel('DoS')
 
-    for i,order in enumerate(orders):
-        axis4.plot(dos[i],doa[i],"x-",label="DG%d"%order, marker=tips[i])
+    if per_order:
+        for i,order in enumerate(orders):
+            axis4.plot(dos[i],doa[i],label="p=%d"%order if not labels else "", marker=tips[case_counter] if case_counter else next(markers))
+    else:
+        axis4.plot([d[0] for d in dos], [d[0] for d in doa], marker=tips[case_counter] if case_counter else next(markers))
 
-    axis4.grid()
-    fig4.savefig(plot_dir+'tasMesh_'+sol+'.pdf', dpi=150)
+    axis4.legend() if not labels else axis4.legend(labels, ncol=2, frameon=True, loc = "center", bbox_to_anchor=(0.5, 1.3))
+    plt.tight_layout()
+    axis4.grid(True)
+    plt.rcParams.update({'font.size': 20})
+    if not overlay:
+        fig4.savefig(plot_dir+'tasMesh_'+sol+'.pdf')
     ####################################################################
     #############    STATIC SCALING  ###################################
     ####################################################################
+    markers = itertools.cycle(tips)
 
     #static scaling
-    fig5= plt.figure(5)
+    fig5= plt.figure(5, figsize=(5.33,4))
     axis5 = fig5.gca()
     axis5.set_ylabel('DoF/s')
     axis5.set_xlabel('Time [s]')
@@ -142,49 +150,70 @@ def tas_spectrum(plot_dir, orders, error_list, dof_group_list,timeoverall_list,s
     # gather static scaling information
     # unknowns per second
     dofpersecond=[]
-    for i,order in enumerate(orders):
-        dofpersecond.append([x*y for x, y in zip(dof_group_list[i],timeoverall_list[i])])  # needs to be adapted if we wrap a time stepper around
-        axis5.loglog(timeoverall_list[i],dofpersecond[i],"x-",label="DG%d"%order, marker=tips[i])
+    if per_order:
+        for i,order in enumerate(orders):
+            dofpersecond.append([x/y for x, y in zip(dof_group_list[i],timeoverall_list[i])])  # needs to be adapted if we wrap a time stepper around
+            axis5.loglog(timeoverall_list[i],dofpersecond[i],label="p=%d"%order if not labels else "", marker=tips[i])
+    else:
+        for i,order in enumerate(orders):
+            dofpersecond.append([x/y for x, y in zip(dof_group_list[i],timeoverall_list[i])])  # needs to be adapted if we wrap a time stepper around
+        axis5.loglog([t[0] for t in timeoverall_list],[d[0] for d in dofpersecond],label="p=%d"%order if not labels else "", marker=tips[case_counter] if case_counter else next(markers))
 
-    axis5.grid()
-    axis5.legend()
-    fig5.savefig(plot_dir+'tasStatic_'+sol+'.pdf', dpi=150)
+    plt.tight_layout()
+    axis5.grid(True)
+    if not overlay:
+        fig5.savefig(plot_dir+'tasStatic_'+sol+'.pdf')
 
     ####################################################################
     ############# ACCURACY #############################################
     ####################################################################
 
-    fig6= plt.figure(6)
+    fig6= plt.figure(6, figsize=(5.33,4))
     axis6 = fig6.gca()
     axis6.set_ylabel('DoE')
     axis6.set_xlabel('Time [s]')
 
-
+    doe = []
     for i,order in enumerate(orders):
-        efficacy=[x*y for x, y in zip(error_list[i],timeoverall_list[i])]
-        doe=-np.log10(efficacy)#digits of efficacy
-        axis6.semilogx((timeoverall_list[i]),doe,"x-",label="DG%d"%order, marker=tips[i])
+        efficacy = [x*y for x, y in zip(error_list[i],timeoverall_list[i])]
+        doe.append(-np.log10(efficacy))#digits of efficacy
 
-    axis6.grid()
-    axis6.legend()
-    fig6.savefig(plot_dir+'tasEfficacy_'+sol+'.pdf', dpi=150)
+    if per_order:
+        for i,order in enumerate(orders):
+            axis6.semilogx((timeoverall_list[i]),doe[i],label="p=%d"%order if not labels else "", marker=tips[i])
+    else:
+        axis6.semilogx(([t[0] for t in timeoverall_list]),[d[0] for d in doe],label="p=%d"%order if not labels else "", marker=tips[case_counter] if case_counter else next(markers))
+
+    plt.tight_layout()
+    axis6.grid(True)
+    if not overlay:
+        fig6.savefig(plot_dir+'tasEfficacy_'+sol+'.pdf')
 
     ####################################################################
     ############# TRUE STATIC SCALING ##################################
     ####################################################################
 
-    fig8= plt.figure(8)
+    fig8 = plt.figure(8, figsize=(5.33,4))
     axis8 = fig8.gca()
     axis8.set_ylabel('True DoF/s')
     axis8.set_xlabel('Time [s]')
 
+    scaling = []
+    truedofpersecond = []
     for i,order in enumerate(orders):
-        scaling=[x/y for x, y in zip(doa[i],dos[i])]
-        truedofpersecond=[x*y for x, y in zip(scaling,dofpersecond[i])]
-        axis8.loglog(timeoverall_list[i],truedofpersecond,"x-",label="DG", marker=tips[i])
+        scaling.append([x/y for x, y in zip(doa[i],dos[i])])
+        truedofpersecond.append([x*y for x, y in zip(scaling[i], dofpersecond[i])])
 
-    axis8.grid()
-    fig8.savefig(plot_dir+'tasTrueStatic_'+sol+'.pdf', dpi=150)
+    if per_order:
+        for i,order in enumerate(orders):
+            axis8.loglog(timeoverall_list[i],truedofpersecond[i],label="p=%d"%order if not labels else "", marker=tips[i])
+    else:
+        axis8.loglog([t[0] for t in timeoverall_list],[t[0] for t in truedofpersecond],label="p=%d"%order if not labels else "", marker=tips[case_counter] if case_counter else next(markers))
+
+    plt.tight_layout()
+    axis8.grid(True)
+    if not overlay:
+        fig8.savefig(plot_dir+'tasTrueStatic_'+sol+'.pdf')
 
 def convergence_rates(error_list,dof_list,orders,type):
     rows_conv_rate=[]
@@ -192,7 +221,7 @@ def convergence_rates(error_list,dof_list,orders,type):
         one_error_list=error_list[i]
         one_dof_list=dof_group_list[i]
         conv_rate=[]
-        conv_rate.append("DG%d"%(i+1))
+        conv_rate.append("p=%d"%(i+1))
         names=[0]
         for i,error in enumerate(one_error_list):
             if i<len(one_error_list)-1:
@@ -292,178 +321,232 @@ def convergence_rates_tolatex(velo_rows_conv_rate,pres_rows_conv_rate,veloerror_
     print(table)
 
 
-####################################################################
-#############GENERAL PERFORMANCE DISTRIBUTION PLOTS################
-####################################################################
-penalty = lambda p, d: (p+1)**3
-orders = range(6)
-scalings = [1.0]
-itmaxs = [4]  # script is not working for varyin itmaxs rn
-deformations = [0] # 0.5*d for d in range(0,21)
-affine_trafo = False
-add_to_quad_degree = (0,0)
-cells_per_dim = [range(1, 8)]
+def gather_data(base_dir, folder, folder_flames, case, ctype, params, cells_per_dim, orders):
+    # gather data from all files
+    #gather all filenames
+    files = [[f"{base_dir}{folder}{case}/{ctype}order_{o}/cells_{c}/{params}_warmed_up_order{o}_cells{c}.csv" for c in cells_per_dim] for o in orders]
+    files_flames = [[f"{base_dir}{folder_flames}{case}/{ctype}order_{o}/cells_{c}/{params}_warmed_up_flame.svg" for c in cells_per_dim] for o in orders]
 
-folder = "mathybperf/performance/results/mixed_poisson/"
-type = "affine/" if deformations and affine_trafo else "nonaffine/" if deformations else "nodeform/"
-case = "(p+1)**3/"
-test = "cgjacobi"
-name=folder+type+case+test
-
-#readin all data
-dof_data=[]
-dof_group_list=[] # per order per cell per dim dofs
-timeoverall_list=[]
-veloerror_list=[]
-preserror_list=[]
-p_list=[]
-
-# gather data from all files
-#gather all filenames
-files = [[name + f"_order{o}_cells{c}.csv" for c in cells_per_dim] for o in orders]
-
-for i,order in enumerate(orders):
-    cell_data = pd.concat(pd.read_csv(cell_files,nrows=1) for cell_files in files[i])
+    for i, order in enumerate(orders):
+        cell_data = pd.concat(pd.read_csv(cell_files,nrows=1) for cell_files in files[i])
+        
+        #order data by dof number and append to group by order list
+        # dof_data.append(cell_data.groupby(["trace dofs (part of velo dofs)"], as_index=False))
+        dof_data.append(cell_data.groupby(["sum dofs"], as_index=False))
     
-    #order data by dof number and append to group by order list
-    dof_data.append(cell_data.groupby(["sum dofs"], as_index=False))
-
-    #gather all dofs
-    dof_group_list.append([d[1] for d in cell_data["sum dofs"].items()])#use sum dofs instead
+        #gather all dofs
+        # dof_group_list.append([d[1] for d in cell_data["trace dofs (part of velo dofs)"].items()])#use sum dofs instead
+        dof_group_list.append([d[1] for d in cell_data["sum dofs"].items()])#use sum dofs instead
 
 
-    #gather all times, decide here which times to use!
-    timeoverall_list.append([e[1] for e in cell_data["overallwarm"].items()])
+        #gather all times, decide here which times to use!
+        # timeoverall_list.append([e[1] for e in cell_data["HybridTraceSolve"].items()])
+        times = []
+        for file in files_flames[i]:
+            with open(file, 'r') as txt_file:
+                text = str(txt_file.read())
+                finds = re.findall(re.compile("SNESSolve \(.* us"), text)
+                time = int((finds[0]).split('(')[1][:-3].replace(',', ''))/1000000 if finds else 0
+            times.append(time)
+        timeoverall_list.append(times)
 
-    #gather all errors
-    veloerror_list.append([e[1] for e in cell_data["L2Velo"].items()])
-    preserror_list.append([e[1] for e in cell_data["L2Pres"].items()])
-
-########## CONVGERNECE PLOTS#######
-# velo_conv=convergence_rates(veloerror_list,dof_group_list,order_list,"velo")
-# pres_conv=convergence_rates(preserror_list,dof_group_list,order_list,"pres")
-# convergence_rates_tolatex(velo_conv,pres_conv,veloerror_list,preserror_list)
-
-
-# if not os.path.exists(os.path.dirname('distribution_external/'+case+'/')):
-#     os.makedirs(os.path.dirname('distribution_external/'+case+'/'))
-
-# #plot overall percentages
-# fig1= plt.figure(1)
-# axis1 = fig1.gca()
-# axis1.set_ylabel('Normalised Time')
-
-# #plot percentages for assembly split by predictor, update, corrector 
-# fig2= plt.figure(2)
-# axis2 = fig2.gca()
-# axis2.set_ylabel('Normalised Time')
-
-#plot internal absolute and relative solve/assembly for all orders
-# if not os.path.exists(os.path.dirname('solveassembly_internal/'+case+'/')):
-#     os.makedirs(os.path.dirname('solveassembly_internal/'+case+'/'))
-
-# fig10= plt.figure(10)
-# axis10 = fig10.gca()
-# axis10.set_ylabel('Absolute Time [s]')
-# fig11= plt.figure(11)
-# axis11 = fig11.gca()
-# axis11.set_ylabel('Normalised Time')
-
-# #run through all data
-# width=0.5
-# i=1
-# TIME_LIST=[]
-# for i,order in enumerate(order_group_data):
-#     labels=[]
-#     labels.append(" ")
-#     for j,data in enumerate(order_group_data[i]):
-#         sum_dof,columns = data
-
-#         #gather times for plot of overall time distribution
-#         timeoverall=columns.taylorgreen
-#         timeconfig=columns.configuration+columns["spcs configuration"]+columns["initial values"]
-#         timeforms=columns["build forms"]
-#         timesolvers=columns["build problems and solvers"]
-#         timeprog=columns["time progressing"]
-#         timepost=columns.postprocessing
-
-#         a1 = axis1.bar(j+1,timeconfig/timeoverall, width, linewidth=1,color=current_palette[3])
-#         b=timeconfig/timeoverall
-#         a2 = axis1.bar(j+1, timeforms/timeoverall, width,bottom=b,
-#                     linewidth=1,color=current_palette[9])   
-#         b+=timeforms/timeoverall
-#         a3 = axis1.bar(j+1, timesolvers/timeoverall, width,bottom=b,
-#                     linewidth=1,color="orange") 
-#         b+=timesolvers/timeoverall
-#         a4 = axis1.bar(j+1, timeprog/timeoverall, width,bottom=b,
-#                     linewidth=1,color="yellow")
-#         b+=timeprog/timeoverall
-#         a5 = axis1.bar(j+1, timepost/timeoverall, width,bottom=b,
-#                     linewidth=1,color="green")
+        #gather all errors
+        veloerror_list.append([e[1] for e in cell_data["L2Velo"].items()])
+        preserror_list.append([e[1] for e in cell_data["L2Pres"].items()])
+    print(timeoverall_list)
+    return veloerror_list, preserror_list,  dof_group_list, timeoverall_list
 
 
-#         #gather times for plot of assembly split
-#         timepred=columns["predictor"]
-#         timeupd=columns["update"]
-#         timecorr=columns["corrector"]
 
-#         timeassembly=timepred+timeupd+timecorr
-#         a6 = axis2.bar(j+1, timepred/timeassembly, width,
-#                     linewidth=1,color=current_palette[7])
-#         b=timepred/timeassembly
-#         a7 = axis2.bar(j+1, timeupd/timeassembly, width,bottom=b,
-#                     linewidth=1,color=current_palette[1])
-#         b+=timeupd/timeassembly
-#         a8 = axis2.bar(j+1, timecorr/timeassembly, width,bottom=b,
-#                     linewidth=1,color=current_palette[0])
-#         b+=timecorr/timeassembly
+################ !!!!!!!!!!!!!!!! SETUP !!!!!!!!!!!!!! ####################
+penalty = lambda p, d: (p+1)**3
+scalings = [1.0]
+itmaxs = [1]  # script is not working for varyin itmaxs rn
+deformations = [0] # 0.5*d for d in range(0,21)
+affine_trafo = "none"
+add_to_quad_degree = (0,0)
+
+base_dir = "/data/sv2518/mathybperf/mathybperf/performance/"
+folder = "results/mixed_poisson/pplus1pow3/"
+folder_flames = "flames/mixed_poisson/pplus1pow3/"
+ctype = "trafo_" + affine_trafo + "/"
+
+case_list = ['case0',
+             'case1',
+             'case2',
+             'case3',
+             'case4e',
+             'case6',
+             'case8']
+params_list= ['hybridization_cg_params',
+              'hybridization_global_matfree_cg',
+              'gtmg_global_matfree_params_matexpmg_assembledjacobi_fgmres',
+              'gtmg_matexpl_params',
+              'gtmg_fully_matfree_params_matexpmg_fgmres_assembledjacobi',
+              'gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres',
+              'native_dg']
+#order_labels = ['c0', 'c1', 'c11', 'c2', 'c3', 'c4e', 'c5', 'c6', 'c8']
+order_labels = {'c3', 'c2', 'c1', 'c6','c8', 'c4', 'c5', 'c7', 'c9'}  # rename cases according to the thesis
+map_cases_experiments_to_thesis = {'case3':'case3', 'case0':'case2', 'case8':'case1', 'case4e':'case6',
+                                   'case6': 'case7', 'case1':'case4', 'case2':'case5'}
 
 
-#         #internal assembly/solve
-#         a18,a19,a20,a21,TIME=solveassembly_internal(columns,axis10,axis11,j+1,sum_dof,i+1,case)
-#         TIME_LIST.append(int(TIME))
-#         labels.append("%d" % (dof_group_list[i][j]))
+for params, case in zip(params_list, case_list):
+    print("Plotting " + case)
+    orders = list(range(5)) if not case in ['case5', 'case6', 'case8'] else list(range(4))
+    cells_per_dim = range(1, 5)
+    
+    # read-in all data
+    dof_data=[]
+    dof_group_list=[] # per order per cell per dim dofs
+    timeoverall_list=[]
+    veloerror_list=[]
+    preserror_list=[]
+    p_list=[]
+    veloerror_list, preserror_list,  dof_group_list, timeoverall_list = gather_data(base_dir, folder, folder_flames, case, ctype, params, cells_per_dim, orders)
 
-#     ####internal assembly/solve
-#     axis10.legend((a18[0],a19[0]),
-#     ("assembly","solve"),loc="lower left")
-#     axis10.set_xlabel("DOFS")
-#     axis10.set_xticks(np.arange(0, len(labels), 1.0))
-#     axis10.set_xticklabels(labels)
-#     fig10.savefig('solveassembly_internal/'+case+'/tasall_absolute_internal_order%d.pdf'%order_list[i], dpi=150)
+    # make folder for this case
+    plot_dir =f"{base_dir}plots/tas/{case}/"
+    if not os.path.exists(os.path.dirname(plot_dir)):
+        os.makedirs(os.path.dirname(plot_dir))
 
-#     axis11.legend((a20[0],a21[0]),
-#     ("assembly","solve"),loc="lower left")
-#     axis11.set_xlabel("DOFS")
-#     axis11.set_xticklabels(labels)
-#     fig11.savefig('solveassembly_internal/'+case+'/tasall_relative_internal_order%d.pdf'%order_list[i], dpi=150)
-#     #####
+    # plot tas spectrum for velocity
+    tas_spectrum(plot_dir, orders, veloerror_list,dof_group_list,timeoverall_list,"velo")
 
-#     ####external distributions
-#     #set legends and savefigs
-#     axis1.legend((a1[0],a2[0],a3[0],a4[0],a5[0]),
-#     ("config","forms","problems and solver","time stepping","postprocessing"),loc="lower left")
-#     fig1.savefig('distribution_external/'+case+'/general_tasAll_external_order%d.pdf'%order_list[i], dpi=150)
+    plt.close(4)
+    plt.close(5)
+    plt.close(6)
+    plt.close(8)
 
-#     axis2.legend((a6[0],a7[0],a8[0]),
-#     ("predictor assembly","update assembly","corrector assembly"))
-#     axis2.set_xlabel("DOFS")
-#     axis2.set_xticks(np.arange(0, len(labels), 1.0))
-#     axis2.set_xticklabels(labels)
-#     fig2.savefig('distribution_external/'+case+'/general_tasAssembly_external_order%d.pdf'%order_list[i], dpi=150)
-#     ####
+    # plot tas spectrum for pressure
+    tas_spectrum(plot_dir, orders, preserror_list,dof_group_list,timeoverall_list,"pres")
+    
+    plt.close(4)
+    plt.close(5)
+    plt.close(6)
+    plt.close(8)
 
-################ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ####################
-################ here actually TAS stuff starts ####################
-################ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ####################
-plot_dir = 'mathybperf/performance/plots/tas/'+case+'/'
-if not os.path.exists(os.path.dirname(plot_dir)):
-    os.makedirs(os.path.dirname(plot_dir))
+for c, (params, case) in enumerate(zip(params_list, case_list)):
+    print("Plotting " + case)
+    orders = [3]
+    cells_per_dim = range(1, 5)
+    overlay = False if c == len(params_list)-1 else True
 
-#plot tas spectrum for velocity
-tas_spectrum(plot_dir, orders, veloerror_list,dof_group_list,timeoverall_list,"velo")
+    # read-in all data
+    dof_data=[]
+    dof_group_list=[] # per order per cell per dim dofs
+    timeoverall_list=[]
+    veloerror_list=[]
+    preserror_list=[]
+    p_list=[]
+    veloerror_list, preserror_list,  dof_group_list, timeoverall_list = gather_data(base_dir, folder, folder_flames, case, ctype, params, cells_per_dim, orders)
 
-#plot tas spectrum for pressure
-tas_spectrum(plot_dir, orders, preserror_list,dof_group_list,timeoverall_list,"pres")
+    # make folder for this case
+    plot_dir =f"{base_dir}plots/tas/allcases/permeshsize/"
+    if not os.path.exists(os.path.dirname(plot_dir)):
+        os.makedirs(os.path.dirname(plot_dir))
 
+    # plot tas spectrum for velocity
+    tas_spectrum(plot_dir, orders, veloerror_list,dof_group_list,timeoverall_list,"velo", overlay=overlay, labels=order_labels)
+
+plt.close(4)
+plt.close(5)
+plt.close(6)
+plt.close(8)
+
+for c, (params, case) in enumerate(zip(params_list, case_list)):
+    print("Plotting " + case)
+    orders = [3]
+    cells_per_dim = range(1, 5)
+    overlay = False if c == len(params_list)-1 else True
+
+    # read-in all data
+    dof_data=[]
+    dof_group_list=[] # per order per cell per dim dofs
+    timeoverall_list=[]
+    veloerror_list=[]
+    preserror_list=[]
+    p_list=[]
+    veloerror_list, preserror_list,  dof_group_list, timeoverall_list = gather_data(base_dir, folder, folder_flames, case, ctype, params, cells_per_dim, orders)
+
+    # make folder for this case
+    plot_dir =f"{base_dir}plots/tas/allcases/permeshsize/"
+    if not os.path.exists(os.path.dirname(plot_dir)):
+        os.makedirs(os.path.dirname(plot_dir))
+
+    # plot tas spectrum for velocity
+    tas_spectrum(plot_dir, orders, preserror_list,dof_group_list,timeoverall_list,"pres", overlay=overlay, labels=order_labels)
+
+plt.close(4)
+plt.close(5)
+plt.close(6)
+plt.close(8)
+
+case_list = ['case2',
+             'case3',
+             'case4e',
+             'case6',
+             ]
+params_list= ['gtmg_global_matfree_params_matexpmg_assembledjacobi_fgmres',
+              'gtmg_matexpl_params',
+              'gtmg_fully_matfree_params_matexpmg_fgmres_assembledjacobi',
+              'gtmg_fully_matfree_params_fs0_cg_jacobi_fs1_cg_laplacian_jacobi_fgmres',
+              ]
+
+#order_labels = ['c0', 'c1', 'c11', 'c2', 'c3', 'c4e', 'c5', 'c6', 'c8']
+order_labels = ['case5', 'case3', 'case6', 'case7', 'case1']  # rename cases according to the thesis
+map_cases_experiments_to_thesis = {'case3':'case3',  'case4e':'case6',
+                                   'case2':'case5', 'case6':'case7', 'case8':'case1'}
+
+for c, (params, case) in enumerate(zip(params_list, case_list)):
+    print("Plotting " + case)
+    orders = list(range(5)) if not case in ['case5', 'case6', 'case8'] else list(range(4))
+    cells_per_dim = range(4,5)
+    overlay = False if c == len(params_list)-1 else True
+
+    # read-in all data
+    dof_data=[]
+    dof_group_list=[] # per order per cell per dim dofs
+    timeoverall_list=[]
+    veloerror_list=[]
+    preserror_list=[]
+    p_list=[]
+    veloerror_list, preserror_list,  dof_group_list, timeoverall_list = gather_data(base_dir, folder, folder_flames, case, ctype, params, cells_per_dim, orders)
+
+    # make folder for this case
+    plot_dir =f"{base_dir}plots/tas/allcases/perdegree/"
+    if not os.path.exists(os.path.dirname(plot_dir)):
+        os.makedirs(os.path.dirname(plot_dir))
+
+    # plot tas spectrum for velocity
+    tas_spectrum(plot_dir, orders, veloerror_list,dof_group_list,timeoverall_list,"velo", overlay=overlay, labels=order_labels, per_order=False, case_counter=c)
+
+plt.close(4)
+plt.close(5)
+plt.close(6)
+plt.close(8)
+
+for c, (params, case) in enumerate(zip(params_list, case_list)):
+    print("Plotting " + case)
+    orders = list(range(0, 5)) if not case in ['case5', 'case6', 'case8'] else list(range(4))
+    cells_per_dim = range(4,5)
+    overlay = False if c == len(params_list)-1 else True
+
+    # read-in all data
+    dof_data=[]
+    dof_group_list=[] # per order per cell per dim dofs
+    timeoverall_list=[]
+    veloerror_list=[]
+    preserror_list=[]
+    p_list=[]
+    veloerror_list, preserror_list,  dof_group_list, timeoverall_list = gather_data(base_dir, folder, folder_flames, case, ctype, params, cells_per_dim, orders)
+
+
+    # make folder for this case
+    plot_dir =f"{base_dir}plots/tas/allcases/perdegree/"
+    if not os.path.exists(os.path.dirname(plot_dir)):
+        os.makedirs(os.path.dirname(plot_dir))
+
+    # plot tas spectrum for velocity
+    tas_spectrum(plot_dir, orders, preserror_list,dof_group_list,timeoverall_list,"pres", overlay=overlay, labels=order_labels, per_order=False, case_counter=c)
 
