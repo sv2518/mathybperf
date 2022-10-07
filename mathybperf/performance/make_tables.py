@@ -48,9 +48,9 @@ for cells in cellslist:
                         for file in files:
                             a = file.split("_warm")[0]
                             param = fr"{a}".split("/")[-1]
-                            if not param in its_data_per_param_trace.keys():
+                            if param not in its_data_per_param_trace.keys():
                                 its_data_per_param_trace.update({param: {}})
-                            if not param in its_data_per_param_outer.keys():
+                            if param not in its_data_per_param_outer.keys():
                                 its_data_per_param_outer.update({param: {}})
 
                             with open(file) as json_file:
@@ -67,7 +67,7 @@ for cells in cellslist:
                         for file in files:
                             a = file.split("_warm")
                             param = fr"{a}".split("/")[-1]
-                            if not param in dof_data_per_param.keys():
+                            if param not in dof_data_per_param.keys():
                                 dof_data_per_param.update({param: {}})
 
                             with open(file) as texfile:
@@ -81,7 +81,7 @@ for cells in cellslist:
                             if 'warmed_up' in file:
                                 a = file.split("_warm")[0]
                                 param = fr"{a}".split("/")[-1]
-                                if not param in time_data_per_param.keys():
+                                if param not in time_data_per_param.keys():
                                     time_data_per_param.update({param: {}})
                                 with open(file, 'r') as txt_file:
                                     text = str(txt_file.read())

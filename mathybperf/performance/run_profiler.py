@@ -41,8 +41,8 @@ if "log_view" not in OptionsManager.commandline_options:
 # get internal time data of solvers
 try:
     quad_degree, (w, w2), (w_t, w_t_exact), mesh, solver = problem(problem_bag, solver_bag,
-                                                                    verification=args.verification,
-                                                                    project=args.projectexactsol)
+                                                                   verification=args.verification,
+                                                                   project=args.projectexactsol)
 except Exception as e:
     VERIFY_STATUS = traceback.format_exc()
     error = int(not VERIFY_STATUS == "success")
@@ -79,7 +79,7 @@ if pc and hasattr(pc, "trace_ksp"):
     size_data = SizeData(w_t).get_data()
     tas_data.update(size_data)
     data_to_tex.update(size_data)
-    
+
     # errors for trace
     if args.projectexactsol:
         accuracy_data = get_error(w_t, w_t_exact, FacetArea(mesh), args.name+"error.pdf")
