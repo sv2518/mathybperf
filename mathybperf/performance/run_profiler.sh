@@ -3,8 +3,9 @@
 # source /Users/sv2518/firedrakeinstalls/fresh/firedrake/bin/activate
 # cd /Users/sv2518/firedrakeexamples/mathybperf/mathybperf/performance
 
-# turn off threading
+# turn off threading and vectorisation
 export OMP_NUM_THREADS=1
+export PYOP2_VECT_STRATEGY=""
 
 # setup (MAKE YOUR CHANGES HERE)
 ARG0="$1"
